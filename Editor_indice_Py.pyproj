@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>a4bfee65-ba2d-4b23-924b-c5c3904a7723</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Editor_indice_Py.py</StartupFile>
+    <StartupFile>main.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,7 +21,24 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Editor_indice_Py.py" />
+    <Compile Include="app\base_app.py" />
+    <Compile Include="app\logic\file_dialog.py" />
+    <Compile Include="app\logic\iso_reader.py" />
+    <Compile Include="app\logic\__init__.py" />
+    <Compile Include="app\windows\window1.py" />
+    <Compile Include="app\windows\__init__.py" />
+    <Compile Include="app\__init__.py" />
+    <Compile Include="config\settings.py" />
+    <Compile Include="config\__init__.py" />
+    <Compile Include="app\logic\hex_morph_ttt\__init__.py" />
+    <Compile Include="main.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="app\" />
+    <Folder Include="app\logic\" />
+    <Folder Include="app\windows\" />
+    <Folder Include="config\" />
+    <Folder Include="app\logic\hex_morph_ttt\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
