@@ -22,7 +22,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app\base_app.py" />
+    <Compile Include="app\logic\data_file_manager.py" />
     <Compile Include="app\logic\file_dialog.py" />
+    <Compile Include="app\logic\hex_morph_ttt\offset_convert.py" />
     <Compile Include="app\logic\iso_reader.py" />
     <Compile Include="app\logic\__init__.py" />
     <Compile Include="app\windows\window1.py" />
