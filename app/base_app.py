@@ -4,12 +4,21 @@ from app.windows.window1 import Window1
 from app.logic.file_dialog import FileDialog
 from tkinter import messagebox
 
+import sv_ttk
+import pywinstyles, sys
+import webbrowser
+import threading
+import queue
+
 
 class BaseApp:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Editor indice")
         self.dimensions = [800,600]
+        
+        self.root = self.root
+        self.queue = queue.Queue()
         
         #centrar la ventana
         y = (self.root.winfo_screenheight() // 2) - (self.dimensions[1] // 2)
@@ -18,6 +27,8 @@ class BaseApp:
         
         
         #variables
+        self.check_var = tk.BooleanVar()
+        self.check_var.set(True)
         self.file_dialog = FileDialog(self)
         self.ventana_actual = None
         self.label_packfile = None
@@ -32,14 +43,15 @@ class BaseApp:
 
         # Menu File
         file_menu = tk.Menu(menu_bar, tearoff=0)
-        file_menu.add_command(label="Open iso", command=self.file_dialog.openFile, accelerator="Ctrl+O")
-        file_menu.add_command(label="Save as", accelerator="Ctrl+s")
+        file_menu.add_command(label="Open iso", command=self.open_iso_task, accelerator="Ctrl+O")
+        file_menu.add_command(label="Save as", command=self.file_dialog.save_as_iso, accelerator="Ctrl+s")
         file_menu.add_command(label="Close file", command=self.close_iso, accelerator="Ctrl+Q")
         menu_bar.add_cascade(label="File", menu=file_menu)
         
         # Vincular atajo de teclado
-        self.root.bind("<Control-o>", lambda event: self.file_dialog.openFile())
+        self.root.bind("<Control-o>", lambda event: self.open_iso_task())
         self.root.bind("<Control-q>", lambda event: self.close_iso())
+        self.root.bind("<Control-s>", lambda event: self.file_dialog.save_as_iso())
         
         # Vincular el boton de cerrar
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -51,24 +63,61 @@ class BaseApp:
         
         #Menu about
         about_menu = tk.Menu(menu_bar, tearoff=0)
-        about_menu.add_command(label="About iso", command= lambda: self.import_small_window(self.root))
+        about_menu.add_command(label="About iso", command= lambda: self.about_iso(self.root))
+        about_menu.add_command(label="About", command= lambda: self.about(self.root))
         menu_bar.add_cascade(label="About", menu=about_menu)
 
+
         self.root.config(menu=menu_bar)
+
 
     def cambiar_ventana(self, ventana):
         if self.ventana_actual:
             self.ventana_actual.destroy()
         self.ventana_actual = ventana(self.root, self)
         
+    def apply_theme_to_titlebar(self, root):
+        version = sys.getwindowsversion()
+
+        if version.major == 10 and version.build >= 22000:
+            # Set the title bar color to the background color on Windows 11 for better appearance
+            pywinstyles.change_header_color(root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
+        elif version.major == 10:
+            pywinstyles.apply_style(root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
+
+            # A hacky way to update the title bar's color on Windows 10 (it doesn't update instantly like on Windows 11)
+            root.wm_attributes("-alpha", 0.99)
+            root.wm_attributes("-alpha", 1)
 
     def run(self):
+        sv_ttk.use_dark_theme()
         self.cambiar_ventana(Window1)
         
-        self.label_packfile = tk.Label(self.root, text="path iso")
+        self.label_packfile = ttk.Label(self.root, text="path iso")
         self.label_packfile.pack(side="left")#colocar a la izquierda del todo
         
+        self.apply_theme_to_titlebar(self.root)
         self.root.mainloop()
+        
+    def open_iso_task(self):
+        def check_data_after():
+            # Verificar si el hilo ha terminado
+            if proceso.is_alive():
+                self.root.after(100, check_data_after)  # Revisar nuevamente en 100 ms
+            else:
+                #cargar los datos en la tabla en el hilo principal
+                self.ventana_actual.load_data(self.file_dialog.datos)
+                
+                self.root.config(cursor="")  # Restaura el cursor al predeterminado
+                self.root.update()
+        if not self.ventana_actual.isclean:
+            messagebox.showinfo("Warning", "close the file")
+            return
+        #mandar la tarea a un hilo secundario
+        proceso = threading.Thread(target=self.file_dialog.openFile)
+        proceso.start()
+        
+        check_data_after()
         
     def import_small_window(self, root):
         #reemplazar por un visualizar hexadecimal
@@ -77,25 +126,50 @@ class BaseApp:
             self.import_window.geometry("300x100")
             self.import_window.title("import files")
 
-            label = tk.Label(self.import_window, text="Esta es una ventana")
+            label = ttk.Label(self.import_window, text="Esta es una ventana")
             label.pack(pady=20)
 
-            button = tk.Button(self.import_window, text="Cerrar", command=self.import_window.destroy)
+            button = ttk.Button(self.import_window, text="Cerrar", style='Accent.TButton', command=self.import_window.destroy)
             button.pack()
         else:
             self.import_window.lift()
         
-    def export_small_window(self, root):
+    def about_iso(self, root):
         if self.export_window is None or not self.export_window.winfo_exists():
             self.export_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
-            self.export_window.geometry("300x100")
+            self.export_window.geometry("400x200")
             self.export_window.title("export files")
 
-            label = tk.Label(self.export_window, text="Esta es una ventana")
-            label.pack(pady=20)
+            label = ttk.Label(self.export_window, text="path Packfile", font=("Arial", 11))
+            label.pack(side="left", padx=10, pady=10)
 
-            button = tk.Button(self.export_window, text="Cerrar", command=self.export_window.destroy)
-            button.pack()
+            entry = ttk.Entry(self.export_window, font=("Arial", 12))
+            entry.delete(0, tk.END)
+            entry.insert(0, self.Pack_File) 
+            entry.pack(side="right", padx=10, pady=10)
+            
+            button = ttk.Button(self.export_window, text="Cerrar", style='Accent.TButton', command=self.export_window.destroy)
+            button.pack(side="bottom")
+        else:
+            self.export_window.lift()
+            
+    def about(self, root):
+        if self.export_window is None or not self.export_window.winfo_exists():
+            self.export_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
+            self.export_window.geometry("260x100")
+            self.export_window.title("About")
+            
+            self.export_window.resizable(False, False)
+            
+            label = ttk.Label(self.export_window, text="by kasto", foreground="blue", cursor="hand2")
+            label.pack(side="top", anchor="w", padx=10, pady=10)
+            
+            label.bind(
+                "<Button-1>", lambda event: webbrowser.open("https://www.youtube.com/@KASTOMODDER15")
+            )
+            
+            switch = ttk.Checkbutton(self.export_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: sv_ttk.use_dark_theme() if self.check_var.get() else sv_ttk.use_light_theme())
+            switch.pack(side="bottom", anchor="w", padx=10, pady=15)
         else:
             self.export_window.lift()
 
@@ -118,9 +192,10 @@ class BaseApp:
         self.ventana_actual.clear_table()
         
         #vaciar variables
-        self.ventana_actual.data_import = {}
-        self.file_dialog.path_abs = ""
+        self.ventana_actual.data_import = []
+        self.file_dialog.path_abs = None
         self.file_dialog.datos = {}
+        self.file_dialog.paths_iso = None
         self.file_dialog.ttt.data_iso_packfile = None
         self.ventana_actual.datFileManger.path_iso = None
         if self.DEBUG: print("All cleaned")
