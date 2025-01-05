@@ -11,7 +11,8 @@
     <OutputPath>.</OutputPath>
     <Name>Editor_indice_Py</Name>
     <RootNamespace>Editor_indice_Py</RootNamespace>
-    <InterpreterId>MSBuild|env_editor_in|$(MSBuildProjectFullPath)</InterpreterId>
+    <InterpreterId>
+    </InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,26 +43,6 @@
     <Folder Include="app\windows\" />
     <Folder Include="config\" />
     <Folder Include="app\logic\hex_morph_ttt\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Interpreter Include="env_editor_in\">
-      <Id>env_editor_in</Id>
-      <Version>3.11</Version>
-      <Description>env_editor_in (Python 3.11 (64-bit))</Description>
-      <InterpreterPath>Scripts\python.exe</InterpreterPath>
-      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
-      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
-      <Architecture>X64</Architecture>
-    </Interpreter>
-    <Interpreter Include="env_editor_in_32\">
-      <Id>env_editor_in_32</Id>
-      <Version>3.11</Version>
-      <Description>env_editor_in_32 (Python 3.11 (32-bit))</Description>
-      <InterpreterPath>Scripts\python.exe</InterpreterPath>
-      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
-      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
-      <Architecture>X86</Architecture>
-    </Interpreter>
   </ItemGroup>
   <ItemGroup>
     <Content Include="requirements.txt" />
