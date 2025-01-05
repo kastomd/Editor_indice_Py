@@ -1,10 +1,7 @@
 # Editor_indice_Py
 
-El programa es una herramienta desarrollada en Python diseñada para manipular los índices generales de un archivo contenedor binario llamado packfile.bin. Este archivo se utiliza como un paquete que almacena múltiples recursos, como datos, imágenes, sonidos o configuraciones, organizados en un formato específico.
+The program is a tool developed in Python designed to manipulate the general indices of a binary container file called packfile.bin. This file serves as a package that stores multiple resources, such as data, images, sounds, or configurations, organized in a specific format.
 
-El objetivo principal del programa es permitir al usuario visualizar, editar, agregar o eliminar entradas en los índices del archivo, facilitando la gestión de los recursos contenidos dentro del mismo.
+The main goal of the program is to allow users to view, edit, add, or delete entries in the file's indices, making it easier to manage the resources contained within.
 
-
-
-
-PD: no esperes ver codigo pro.
+P.S.: Don’t expect to see pro-level code.
