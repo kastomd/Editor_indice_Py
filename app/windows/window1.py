@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 from tkinter import ttk
 from  tkinter import BOTTOM, RIGHT, Y, Scrollbar, ttk
@@ -7,17 +8,17 @@ import re
 import os
 
 
-class Window1(tk.Frame):
+class Window1(ttk.Frame):
     def __init__(self, master, controlador):
         super().__init__(master)
         self.controlador = controlador
         self.pack(fill="both", expand=True)
         self.datFileManger = DataFileManager(self.controlador)
         #self.configure(bg=settings.COLORS["background"])
-        self.data_import={}
+        self.data_import = []
         
         #scrollbar
-        self.scroll = tk.Scrollbar(self)
+        self.scroll = ttk.Scrollbar(self)
         self.scroll.pack(side=RIGHT, fill=Y)
         # Crear el Treeview (tabla)
         columns = ("col1", "col2", "col3")  # Nombres de las columnas
@@ -45,8 +46,8 @@ class Window1(tk.Frame):
         
         # Crear el menu contextual
         self.context_menu = tk.Menu(self, tearoff=0)
-        self.context_menu.add_command(label="Import", command=self.import_data)
-        self.context_menu.add_command(label="Export", command=self.export_data)
+        self.context_menu.add_command(label="Import", command=self.import_data_task)
+        self.context_menu.add_command(label="Export", command=self.export_data_task)
 
         
 
@@ -64,6 +65,9 @@ class Window1(tk.Frame):
     # Funcion para cargar datos en la tabla
     def load_data(self, files_data):
         
+        if not files_data:
+            return
+        
         #limpiar la tabla
         self.clear_table()
         self.isclean = False
@@ -72,6 +76,7 @@ class Window1(tk.Frame):
         for row in files_data:
             self.tree.insert("", tk.END, values=row, tags=(row[0], ))
         #self.tree.tag_configure("10", foreground="red")
+        if  self.controlador.DEBUG: print("data loaded")
         
     # Funcion para mostrar el menu contextual al hacer clic derecho
     def show_context_menu(self, event):
@@ -81,22 +86,77 @@ class Window1(tk.Frame):
         
     # Funcion para importar archivo
     def import_data(self):
-        selected_item = self.tree.selection()
-        if selected_item:
-            item_values = self.tree.item(selected_item, "values")
-            print(f"file {item_values[0]}")
+        #by chat gpt
+        # Funcion para extraer el numero entero del nombre del archivo
+        def extraer_numero_entero(ruta):
+            nombre_archivo = ruta.split("/")[-1]  # Obtener solo el nombre del archivo
+            match = re.match(r"(\d+)-[0-9a-fA-F]+\.unk", nombre_archivo)
+            if match:
+                return int(match.group(1))  # Retornar el numero entero como entero
+            return float('inf')  # En caso de no coincidir, devolver un valor alto para que quede al final
+
+        
+        selected_items = self.tree.selection()
+        if selected_items:
             
             ruta_archivos = filedialog.askopenfilenames(
                 title="Choose files",
                 filetypes=[("file", "*.unk"), ("All files", "*.*")]
                 )
             
+            #ordenar los items del treeview
+            if len(selected_items) > 1:
+                selected_items = sorted(selected_items, key=lambda item: self.tree.index(item))
+                
+            #iterar en cada elemento
+            # for selected_item in selected_items:
+            #     #obtener los valores de la fila
+            #     item_values = self.tree.item(selected_item, "values")
+            #     print(f"file {item_values[0]}")
+            
+            
             if ruta_archivos:
-                #import un archivo
-                if len(ruta_archivos) == 1:
-                    with open(ruta_archivos[0], "rb") as file:
+                if len(ruta_archivos) != len(selected_items):
+                    raise ValueError("La cantidad de archivos a importar no es igual a los archivos seleccionados")
+                #import archivos
+                rutas_ordenadas = ruta_archivos
+                if len(ruta_archivos) > 1:
+                    #ordenar las rutas
+                    rutas_ordenadas = sorted(ruta_archivos, key=extraer_numero_entero)
+                        
+                    #verificar si los archivos tienen el mismo nombre que los archivos de la iso
+                    patron = r"-(\w+)\.unk"
+                    numeros_hexadecimales = [match.group(1) for nombre in rutas_ordenadas if (match := re.search(patron, nombre))]
+                    if len(numeros_hexadecimales) != len(selected_items):
+                        raise ValueError("los archivos no cumplen con la estructura del nombre: numeroEntero-numeroHexadecimal.unk")
+                        
+                    for numIdx in range(len(selected_items)):
+                        nmfile = self.tree.item(selected_items[numIdx], "values")[0]
+                        if  nmfile != numeros_hexadecimales[numIdx].upper():
+                            raise ValueError(f"el nombre del archivo no es igual al del iso\n{numeros_hexadecimales[numIdx]}.unk != {nmfile}")
+                        
+                for idxnum in range(len(selected_items)):
+                    #obtener los valores de la fila
+                    item_values = self.tree.item(selected_items[idxnum], "values")
+                    with open(ruta_archivos[idxnum], "rb") as file:
                         data = file.read()
-                        self.data_import[item_values[0]] = data
+                        #archivoName: bytes
+                        file_info = {}
+                        file_info[item_values[0]] = data
+                            
+                        #comprobar si existe la key en la lista
+                        exist_key = None
+                        for idx, diccionario in enumerate(self.data_import):
+                            if item_values[0] in diccionario:
+                                exist_key = idx  # Guardar el índice del diccionario que contiene la clave
+                                break
+                                
+                        if exist_key is not None:
+                            #si existe se reemplaza su contenido
+                            self.data_import[exist_key] = file_info
+                        else:
+                            #si no existe se agrega
+                            self.data_import.append(file_info)
                         
                         #obtener los items del treeview
                         items = self.tree.get_children()
@@ -104,34 +164,33 @@ class Window1(tk.Frame):
                         #obtener valores de la fila
                         valores = list(self.tree.item(items[int(item_values[0], 16) - 1], "values"))
                         # Modificar solo la columna size
-                        valores[2] = hex(len(data))[2:]
+                        valores[2] = hex(len(data))[2:].upper()
                         # Actualizar el Treeview
                         self.tree.item(items[int(item_values[0], 16) - 1], values=valores)
                         #cambiar el color
                         self.tree.tag_configure(item_values[0], foreground="red")
-                    return
+                        if  self.controlador.DEBUG: print(f"file imported {item_values[0]}")
                 
-                #by chat gpt
-                # Funcion para extraer el numero entero del nombre del archivo
-                def extraer_numero_entero(ruta):
-                    nombre_archivo = ruta.split("/")[-1]  # Obtener solo el nombre del archivo
-                    match = re.match(r"(\d+)-[0-9a-fA-F]+\.unk", nombre_archivo)
-                    if match:
-                        return int(match.group(1))  # Retornar el numero entero como entero
-                    return float('inf')  # En caso de no coincidir, devolver un valor alto para que quede al final
+                    
 
-                # Ordenar las rutas basandose en el numero entero
-                rutas_ordenadas = sorted(ruta_archivos, key=extraer_numero_entero)
-                if  self.controlador.DEBUG:print(rutas_ordenadas)
-                #[{file:bytes}]
+                    # Ordenar las rutas basandose en el numero entero
+                    # rutas_ordenadas = sorted(ruta_archivos, key=extraer_numero_entero)
+                    # if  self.controlador.DEBUG:print(rutas_ordenadas)
+                    # #[{file:bytes}]
                 
-                for x in rutas_ordenadas:
-                    with open(x, "rb") as file:
-                        name_without_extension = os.path.splitext(x.split("/")[-1])[0]
-                        self.data_import[name_without_extension] = file.read()
+                    # for x in rutas_ordenadas:
+                    #     with open(x, "rb") as file:
+                    #         name_without_extension = os.path.splitext(x.split("/")[-1])[0]
+                    #         self.data_import[name_without_extension] = file.read()
             
-            
-            
+    def import_data_task(self):
+        proceso = threading.Thread(target=self.import_data)
+        proceso.start()
+
+    def export_data_task(self):
+        proceso = threading.Thread(target=self.export_data)
+        proceso.start()
+        
 
     # Funcion para exportar archivo
     def export_data(self):
