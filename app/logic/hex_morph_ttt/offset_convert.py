@@ -1,4 +1,5 @@
 import struct
+from tkinter import messagebox
 
 
 class OffsetConvert():
@@ -111,7 +112,8 @@ class OffsetConvert():
                     
                     long_cv = self.getSizeConvert(hex(int(datos[0], 16) -1)[2:], bytes_long, False)
                     file.write(bytes.fromhex(long_cv))
-            print("writed datos")
+            if self.contenedor.controlador.DEBUG: print("writed datos")
+            messagebox.showinfo("Success", f"saved:\n{iso}")
 
     def getOffsetConvert(self, val, set_v:bool=True):
         key:int

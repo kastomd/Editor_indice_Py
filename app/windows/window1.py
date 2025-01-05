@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 from tkinter import ttk
 from  tkinter import BOTTOM, RIGHT, Y, Scrollbar, ttk
@@ -45,8 +46,8 @@ class Window1(ttk.Frame):
         
         # Crear el menu contextual
         self.context_menu = tk.Menu(self, tearoff=0)
-        self.context_menu.add_command(label="Import", command=self.import_data)
-        self.context_menu.add_command(label="Export", command=self.export_data)
+        self.context_menu.add_command(label="Import", command=self.import_data_task)
+        self.context_menu.add_command(label="Export", command=self.export_data_task)
 
         
 
@@ -182,8 +183,14 @@ class Window1(ttk.Frame):
                     #         name_without_extension = os.path.splitext(x.split("/")[-1])[0]
                     #         self.data_import[name_without_extension] = file.read()
             
-            
-            
+    def import_data_task(self):
+        proceso = threading.Thread(target=self.import_data)
+        proceso.start()
+
+    def export_data_task(self):
+        proceso = threading.Thread(target=self.export_data)
+        proceso.start()
+        
 
     # Funcion para exportar archivo
     def export_data(self):

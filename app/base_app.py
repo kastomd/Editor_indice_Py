@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import RIGHT, Y, ttk
 from app.windows.window1 import Window1
 from app.logic.file_dialog import FileDialog
 from tkinter import messagebox
@@ -17,8 +17,7 @@ class BaseApp:
         self.root.title("Editor indice")
         self.dimensions = [800,600]
         
-        self.root = self.root
-        self.queue = queue.Queue()
+        
         
         #centrar la ventana
         y = (self.root.winfo_screenheight() // 2) - (self.dimensions[1] // 2)
@@ -27,8 +26,9 @@ class BaseApp:
         
         
         #variables
+        self.import_name_files = None
         self.check_var = tk.BooleanVar()
-        self.check_var.set(True)
+        self.check_var.set(False)
         self.file_dialog = FileDialog(self)
         self.ventana_actual = None
         self.label_packfile = None
@@ -44,14 +44,14 @@ class BaseApp:
         # Menu File
         file_menu = tk.Menu(menu_bar, tearoff=0)
         file_menu.add_command(label="Open iso", command=self.open_iso_task, accelerator="Ctrl+O")
-        file_menu.add_command(label="Save as", command=self.file_dialog.save_as_iso, accelerator="Ctrl+s")
+        file_menu.add_command(label="Save as", command=self.save_iso_task, accelerator="Ctrl+s")
         file_menu.add_command(label="Close file", command=self.close_iso, accelerator="Ctrl+Q")
         menu_bar.add_cascade(label="File", menu=file_menu)
         
         # Vincular atajo de teclado
         self.root.bind("<Control-o>", lambda event: self.open_iso_task())
         self.root.bind("<Control-q>", lambda event: self.close_iso())
-        self.root.bind("<Control-s>", lambda event: self.file_dialog.save_as_iso())
+        self.root.bind("<Control-s>", lambda event: self.save_iso_task())
         
         # Vincular el boton de cerrar
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -90,12 +90,14 @@ class BaseApp:
             root.wm_attributes("-alpha", 1)
 
     def run(self):
-        sv_ttk.use_dark_theme()
+        #usar theme light
+        sv_ttk.use_light_theme()
         self.cambiar_ventana(Window1)
         
         self.label_packfile = ttk.Label(self.root, text="path iso")
         self.label_packfile.pack(side="left")#colocar a la izquierda del todo
         
+        #aplicar el theme a la barra
         self.apply_theme_to_titlebar(self.root)
         self.root.mainloop()
         
@@ -110,24 +112,32 @@ class BaseApp:
                 
                 self.root.config(cursor="")  # Restaura el cursor al predeterminado
                 self.root.update()
+                
         if not self.ventana_actual.isclean:
             messagebox.showinfo("Warning", "close the file")
             return
+        
         #mandar la tarea a un hilo secundario
         proceso = threading.Thread(target=self.file_dialog.openFile)
         proceso.start()
         
         check_data_after()
         
+    def save_iso_task(self):
+        proceso = threading.Thread(target=self.file_dialog.save_as_iso)
+        proceso.start()
+
     def import_small_window(self, root):
-        #reemplazar por un visualizar hexadecimal
         if self.import_window is None or not self.import_window.winfo_exists():
             self.import_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
             self.import_window.geometry("300x100")
             self.import_window.title("import files")
 
-            label = ttk.Label(self.import_window, text="Esta es una ventana")
+            scroll = ttk.Scrollbar(self.import_window)
+            scroll.pack(side=RIGHT, fill=Y)
+            label = ttk.Label(self.import_window, text="Esta es una ventana \nasdjaidiieja\nodoajifojoajjooi\naoijiojsjisao")
             label.pack(pady=20)
+            scroll.config(command=label)
 
             button = ttk.Button(self.import_window, text="Cerrar", style='Accent.TButton', command=self.import_window.destroy)
             button.pack()
