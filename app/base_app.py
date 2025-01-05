@@ -8,7 +8,6 @@ import sv_ttk
 import pywinstyles, sys
 import webbrowser
 import threading
-import queue
 
 
 class BaseApp:
@@ -34,6 +33,8 @@ class BaseApp:
         self.label_packfile = None
         self.import_window = None
         self.export_window = None
+        self.about_window = None
+        self.about_iso_window = None
         self.Pack_File = '/PSP_GAME/USRDIR/PACKFILE.BIN'
         self.DEBUG = True
         
@@ -145,43 +146,43 @@ class BaseApp:
             self.import_window.lift()
         
     def about_iso(self, root):
-        if self.export_window is None or not self.export_window.winfo_exists():
-            self.export_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
-            self.export_window.geometry("400x200")
-            self.export_window.title("export files")
+        if self.about_iso_window is None or not self.about_iso_window.winfo_exists():
+            self.about_iso_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
+            self.about_iso_window.geometry("400x200")
+            self.about_iso_window.title("About iso")
 
-            label = ttk.Label(self.export_window, text="path Packfile", font=("Arial", 11))
+            label = ttk.Label(self.about_iso_window, text="path Packfile", font=("Arial", 11))
             label.pack(side="left", padx=10, pady=10)
 
-            entry = ttk.Entry(self.export_window, font=("Arial", 12))
+            entry = ttk.Entry(self.about_iso_window, font=("Arial", 12))
             entry.delete(0, tk.END)
             entry.insert(0, self.Pack_File) 
             entry.pack(side="right", padx=10, pady=10)
             
-            button = ttk.Button(self.export_window, text="Cerrar", style='Accent.TButton', command=self.export_window.destroy)
+            button = ttk.Button(self.about_iso_window, text="Cerrar", style='Accent.TButton', command=self.about_iso_window.destroy)
             button.pack(side="bottom")
         else:
-            self.export_window.lift()
+            self.about_iso_window.lift()
             
     def about(self, root):
-        if self.export_window is None or not self.export_window.winfo_exists():
-            self.export_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
-            self.export_window.geometry("260x100")
-            self.export_window.title("About")
+        if self.about_window is None or not self.about_window.winfo_exists():
+            self.about_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
+            self.about_window.geometry("260x100")
+            self.about_window.title("About")
             
-            self.export_window.resizable(False, False)
+            self.about_window.resizable(False, False)
             
-            label = ttk.Label(self.export_window, text="by kasto", foreground="blue", cursor="hand2")
+            label = ttk.Label(self.about_window, text="by kasto", foreground="blue", cursor="hand2")
             label.pack(side="top", anchor="w", padx=10, pady=10)
             
             label.bind(
                 "<Button-1>", lambda event: webbrowser.open("https://www.youtube.com/@KASTOMODDER15")
             )
             
-            switch = ttk.Checkbutton(self.export_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: sv_ttk.use_dark_theme() if self.check_var.get() else sv_ttk.use_light_theme())
+            switch = ttk.Checkbutton(self.about_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: sv_ttk.use_dark_theme() if self.check_var.get() else sv_ttk.use_light_theme())
             switch.pack(side="bottom", anchor="w", padx=10, pady=15)
         else:
-            self.export_window.lift()
+            self.about_window.lift()
 
     def on_close(self):
         if self.ventana_actual.isclean or messagebox.askokcancel("Exit", "Are you sure you want to close the window?"):

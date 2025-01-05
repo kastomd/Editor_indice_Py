@@ -15,7 +15,7 @@ class OffsetConvert():
             f.seek(self.contenedor.paths_iso[self.contenedor.controlador.Pack_File][0] + 4 )# posicion de los files total
             nume_files = struct.unpack('<I', f.read(4))[0]  # Entero sin signo, Little-endian
             
-            f.seek(self.contenedor.paths_iso['/PSP_GAME/USRDIR/PACKFILE.BIN'][0])  # Mover el puntero a la posicion deseada
+            f.seek(self.contenedor.paths_iso[self.contenedor.controlador.Pack_File][0])  # Mover el puntero a la posicion deseada
             self.data_iso_packfile = f.read((nume_files * 16) + 0x10)  # Leer la cantidad de bytes especificada
            
             
@@ -154,7 +154,7 @@ class OffsetConvert():
         #multiplicar por 0x800
         val *= 0x800
         #sumarle 0x38000 y pos packfile
-        val = val + self.contenedor.paths_iso['/PSP_GAME/USRDIR/PACKFILE.BIN'][0] + 0x38000
+        val = val + self.contenedor.paths_iso[self.contenedor.controlador.Pack_File][0] + 0x38000
         
         return hex(val)[2:].upper()
         

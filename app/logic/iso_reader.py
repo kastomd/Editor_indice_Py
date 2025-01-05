@@ -31,9 +31,4 @@ class IsoReader:
         iso.close()
         return data_files
     
-
-    # Ruta al archivo ISO
-    #ruta_iso = 'E:\\Documents\\ODI\\#Gu 133\\com.neon.sgu\\games\\VERSION-LATINO-V0.cso.iso'
-    #listar_archivos_iso(ruta_iso)
-
-    #archivo_iso = '/PSP_GAME/USRDIR/PACKFILE.BIN'
+    #data = '/PSP_GAME/USRDIR/PACKFILE.BIN' = [offset, size]

@@ -29,7 +29,7 @@ class DataFileManager():
     def importfile(self, root, iso, files, datosOri):
         size_iso = os.path.getsize(iso)
         if root == iso:
-            raise ValueError("no se puede sobreescribir en la iso base")
+            raise ValueError("It is not possible to overwrite the base ISO")
         
         with open(iso, "rb") as file:#iso original
             
