@@ -60,7 +60,7 @@ class Window1(ttk.Frame):
         #verificar si esta vacia la tabla
         self.isclean = True
         
-    #programar una boton para limpiar la tabla
+    
 
     # Funcion para cargar datos en la tabla
     def load_data(self, files_data):
@@ -95,7 +95,7 @@ class Window1(ttk.Frame):
                 return int(match.group(1))  # Retornar el numero entero como entero
             return float('inf')  # En caso de no coincidir, devolver un valor alto para que quede al final
 
-        
+        #obtener los archivos seleccionados
         selected_items = self.tree.selection()
         if selected_items:
             
@@ -117,7 +117,7 @@ class Window1(ttk.Frame):
             
             if ruta_archivos:
                 if len(ruta_archivos) != len(selected_items):
-                    raise ValueError("La cantidad de archivos a importar no es igual a los archivos seleccionados")
+                    raise ValueError("The number of files to be imported is not equal to the selected files.")
                 #import archivos
                 rutas_ordenadas = ruta_archivos
                 if len(ruta_archivos) > 1:
@@ -128,12 +128,12 @@ class Window1(ttk.Frame):
                     patron = r"-(\w+)\.unk"
                     numeros_hexadecimales = [match.group(1) for nombre in rutas_ordenadas if (match := re.search(patron, nombre))]
                     if len(numeros_hexadecimales) != len(selected_items):
-                        raise ValueError("los archivos no cumplen con la estructura del nombre: numeroEntero-numeroHexadecimal.unk")
+                        raise ValueError("The files do not meet the naming structure: integerNumber-hexadecimalNumber.unk")
                         
                     for numIdx in range(len(selected_items)):
                         nmfile = self.tree.item(selected_items[numIdx], "values")[0]
                         if  nmfile != numeros_hexadecimales[numIdx].upper():
-                            raise ValueError(f"el nombre del archivo no es igual al del iso\n{numeros_hexadecimales[numIdx]}.unk != {nmfile}")
+                            raise ValueError(f"The file name is not the same as the ISO name\n{numeros_hexadecimales[numIdx]}.unk != {nmfile}")
                         
                 for idxnum in range(len(selected_items)):
                     #obtener los valores de la fila
@@ -182,11 +182,13 @@ class Window1(ttk.Frame):
                     #     with open(x, "rb") as file:
                     #         name_without_extension = os.path.splitext(x.split("/")[-1])[0]
                     #         self.data_import[name_without_extension] = file.read()
-            
+        
+    #funcion para asignar el hillo 
     def import_data_task(self):
         proceso = threading.Thread(target=self.import_data)
         proceso.start()
 
+    #funcion para asignar el hillo 
     def export_data_task(self):
         proceso = threading.Thread(target=self.export_data)
         proceso.start()
@@ -204,7 +206,7 @@ class Window1(ttk.Frame):
             for itemTree in selected_items:
                 #obtener valores de la fila
                 item_values = self.tree.item(itemTree, "values")
-                if  self.controlador.DEBUG: print(f"file {item_values[0]}")
+                if  self.controlador.DEBUG: print(f"selected file {item_values[0]}")
                 
                 #estructura [{file:bytes}]
                 with open(self.controlador.file_dialog.path_abs, "rb") as iso:
@@ -230,19 +232,22 @@ class Window1(ttk.Frame):
                     if not file_path: return
                     file_path = os.path.normpath(file_path)
                 else:
+                    #abrir un choose folder para varios archivos
                     if not folder_path:
                         folder_path = filedialog.askdirectory(
                             title="Choose a folder",
                         )
                     if not folder_path: return
                     #folder_path = os.path.join(folder_path, f"{int(item_values[0], 16)}-{item_values[0]}.unk")
+
+                #data de archivos a exportar
                 data_files_exp.append({
-                item_values[0] : file_bytes
-                })
+                    item_values[0] : file_bytes
+                    })
     
             #guardar archivos
             self.datFileManger.exportFiles(data_files=data_files_exp,
-                name_file=file_path, path_abs=folder_path)#guardar un solo archivo
+                name_file=file_path, path_abs=folder_path)
             
     #Funcion para limpiar la tabla
     def clear_table(self):

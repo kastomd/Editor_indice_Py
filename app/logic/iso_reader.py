@@ -1,11 +1,14 @@
 import pycdlib
 
 class IsoReader:
+    #size del iso
     iso_size = 0
     
     
     def listar_archivos_iso(ruta_iso: str = ''):
+        #paths de los archivos
         data_files = {}
+
         # Cargar el archivo ISO
         iso = pycdlib.PyCdlib()
         iso.open(ruta_iso)
@@ -24,7 +27,7 @@ class IsoReader:
                 #posicion del archivo
                 offset = record.fp_offset
                 
-                
+                #agregar la info dl archivo
                 data_files[archivo_path] = [offset, size]
 
         # Cerrar el archivo ISO

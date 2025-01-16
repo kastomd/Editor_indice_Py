@@ -68,15 +68,16 @@ class BaseApp:
         about_menu.add_command(label="About", command= lambda: self.about(self.root))
         menu_bar.add_cascade(label="About", menu=about_menu)
 
-
+        #establecer menu al root
         self.root.config(menu=menu_bar)
 
 
-    def cambiar_ventana(self, ventana):
+    def change_window(self, ventana):
         if self.ventana_actual:
             self.ventana_actual.destroy()
         self.ventana_actual = ventana(self.root, self)
         
+    #by repo Sun-Valley-ttk-theme
     def apply_theme_to_titlebar(self, root):
         version = sys.getwindowsversion()
 
@@ -93,9 +94,11 @@ class BaseApp:
     def run(self):
         #usar theme light
         sv_ttk.use_light_theme()
-        self.cambiar_ventana(Window1)
+        #asignar la ventana
+        self.change_window(Window1)
         
-        self.label_packfile = ttk.Label(self.root, text="path iso")
+        #label path iso
+        self.label_packfile = ttk.Label(self.root, text="//")
         self.label_packfile.pack(side="left")#colocar a la izquierda del todo
         
         #aplicar el theme a la barra
@@ -118,13 +121,15 @@ class BaseApp:
             messagebox.showinfo("Warning", "close the file")
             return
         
-        #mandar la tarea a un hilo secundario
+        #procesar la tarea a un hilo secundario
         proceso = threading.Thread(target=self.file_dialog.openFile)
         proceso.start()
         
+        #verificar si el hilo termino
         check_data_after()
         
     def save_iso_task(self):
+        #crear un hilo
         proceso = threading.Thread(target=self.file_dialog.save_as_iso)
         proceso.start()
 
