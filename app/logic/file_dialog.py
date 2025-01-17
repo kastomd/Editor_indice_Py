@@ -8,10 +8,14 @@ import copy
 
 class FileDialog:
     def __init__(self, controlador):
+        #controlador base_app
         self.controlador = controlador
+        #ruta del archivo iso
         self.path_abs = None
+        #datos de los indices y longitudes del packfile
         self.datos = {}
         self.ttt = OffsetConvert(self)
+        #paths de los arhivos de la iso
         self.paths_iso = None
         
     
@@ -54,17 +58,18 @@ class FileDialog:
             try:
                 return int(clave, 16)  # Convierte la clave hexadecimal a entero
             except ValueError:
-                raise ValueError("error al reordenar")  # En caso de error
+                raise ValueError("Error when reordering file paths.")  # En caso de error
         
         if not self.path_abs: 
             return
         file_path = filedialog.asksaveasfilename(
-                    defaultextension=".iso",  # Extension predeterminada
+                    defaultextension=".iso", 
                     filetypes=[("file iso", "*.iso"), ("All files", "*.*")],
                     title="Save file as "
                 )
 
         if file_path:
+            #normalizar la ruta
             file_path = os.path.normpath(file_path)
             #ordenar la lista de los archivos importados
             lista_ordenada = sorted(self.controlador.ventana_actual.data_import, key=extraer_hex)
