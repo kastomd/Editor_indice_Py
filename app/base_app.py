@@ -71,7 +71,7 @@ class BaseApp:
         #establecer menu al root
         self.root.config(menu=menu_bar)
 
-
+    #cambia la ventana principal
     def change_window(self, ventana):
         if self.ventana_actual:
             self.ventana_actual.destroy()
@@ -91,6 +91,7 @@ class BaseApp:
             root.wm_attributes("-alpha", 0.99)
             root.wm_attributes("-alpha", 1)
 
+    #inciador
     def run(self):
         #usar theme light
         sv_ttk.use_light_theme()
@@ -105,6 +106,7 @@ class BaseApp:
         self.apply_theme_to_titlebar(self.root)
         self.root.mainloop()
         
+    #event tarea en hilo secundario
     def open_iso_task(self):
         def check_data_after():
             # Verificar si el hilo ha terminado
@@ -133,6 +135,7 @@ class BaseApp:
         proceso = threading.Thread(target=self.file_dialog.save_as_iso)
         proceso.start()
 
+    #ventana de archivos importados
     def import_small_window(self, root):
         if self.import_window is None or not self.import_window.winfo_exists():
             self.import_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
@@ -150,6 +153,7 @@ class BaseApp:
         else:
             self.import_window.lift()
         
+    #muestra ciertos datos importantes de la iso
     def about_iso(self, root):
         if self.about_iso_window is None or not self.about_iso_window.winfo_exists():
             self.about_iso_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
@@ -172,6 +176,7 @@ class BaseApp:
     def about(self, root):
         #comprobar la instancia de la ventana
         if self.about_window is None or not self.about_window.winfo_exists():
+            self.about_window = tk.Toplevel(root)
             self.about_window.geometry("260x100")
             self.about_window.title("About")
             
@@ -197,10 +202,13 @@ class BaseApp:
             #traer al frente
             self.about_window.lift()
 
+    #event cerra app
     def on_close(self):
+        #evitar un cierre de la app no previsto
         if self.ventana_actual.isclean or messagebox.askokcancel("Exit", "Are you sure you want to close the window?"):
             self.root.destroy()
 
+    #funcion para vaciar los datos del iso de la memoria
     def close_iso(self, view:bool = True):
         #confi cerrar iso
         if view and not self.ventana_actual.isclean and messagebox.askquestion("Warning", "Are you sure you want to do this?") == "no":
