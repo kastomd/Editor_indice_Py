@@ -165,11 +165,12 @@ class BaseApp:
             self.about_iso_window.lift()
             
     def about(self, root):
+        #comprobar la instancia de la ventana
         if self.about_window is None or not self.about_window.winfo_exists():
-            self.about_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
             self.about_window.geometry("260x100")
             self.about_window.title("About")
             
+            #quitar redimensionamiento
             self.about_window.resizable(False, False)
             
             label = ttk.Label(self.about_window, text="by kasto", foreground="blue", cursor="hand2")
@@ -179,9 +180,16 @@ class BaseApp:
                 "<Button-1>", lambda event: webbrowser.open("https://www.youtube.com/@KASTOMODDER15")
             )
             
-            switch = ttk.Checkbutton(self.about_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: sv_ttk.use_dark_theme() if self.check_var.get() else sv_ttk.use_light_theme())
+            #check para cambiar theme de la app
+            switch = ttk.Checkbutton(self.about_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: (
+                sv_ttk.use_dark_theme() or self.apply_theme_to_titlebar(root)
+                if self.check_var.get()
+                else sv_ttk.use_light_theme() or self.apply_theme_to_titlebar(root)
+            ))
+            
             switch.pack(side="bottom", anchor="w", padx=10, pady=15)
         else:
+            #traer al frente
             self.about_window.lift()
 
     def on_close(self):
