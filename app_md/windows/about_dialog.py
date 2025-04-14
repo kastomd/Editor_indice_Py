@@ -30,7 +30,7 @@ class AboutDialog(QDialog):
         text_label.setText(
             "<b>Editor Indice Tag Team</b><br>"
             f"Version {self.contenedor.version}<br><br>"
-            "This program aims to allow the user to modify<br>files within the PACKFILE:BIN of the ISO.<br>"
+            "This program aims to allow the user to modify<br>files within the PACKFILE.BIN of the ISO.<br><br>"
             "<a href='https://github.com/kastomd/Editor_indice_Py'>GitHub</a> | "
             "<a href='https://www.youtube.com/@KASTOMODDER15'>Kasto_md</a>"
         )

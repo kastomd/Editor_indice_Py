@@ -1,8 +1,10 @@
+from re import DEBUG
 import tkinter as tk
 from tkinter import RIGHT, Y, ttk
 from app.windows.window1 import Window1
 from app.logic.file_dialog import FileDialog
 from tkinter import messagebox
+from tkinterdnd2 import TkinterDnD, DND_FILES
 
 import sv_ttk
 import pywinstyles, sys
@@ -12,7 +14,7 @@ import threading
 
 class BaseApp:
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = TkinterDnD.Tk()
         self.root.title("Editor indice")
         self.dimensions = [800,600]
         
@@ -62,6 +64,12 @@ class BaseApp:
         op_menu.add_command(label="view imported files", command= lambda: self.import_small_window(self.root))
         menu_bar.add_cascade(label="View", menu=op_menu)
         
+        #Menu File Utilities
+        fileUtilities_menu = tk.Menu(menu_bar, tearoff=0)
+        fileUtilities_menu.add_command(label="Compress iso", command= lambda: self.file_dialog.compress_iso())
+        fileUtilities_menu.add_command(label="Extract iso", command= lambda: self.file_dialog.extract_iso())
+        menu_bar.add_cascade(label="File Utilities", menu=fileUtilities_menu)
+        
         #Menu about
         about_menu = tk.Menu(menu_bar, tearoff=0)
         about_menu.add_command(label="About iso", command= lambda: self.about_iso(self.root))
@@ -70,6 +78,10 @@ class BaseApp:
 
         #establecer menu al root
         self.root.config(menu=menu_bar)
+
+        # Habilitar eventos de arrastrar y soltar
+        self.root.drop_target_register(DND_FILES)
+        self.root.dnd_bind('<<Drop>>', self.on_drop)
 
     #cambia la ventana principal
     def change_window(self, ventana):
@@ -207,6 +219,13 @@ class BaseApp:
         #evitar un cierre de la app no previsto
         if self.ventana_actual.isclean or messagebox.askokcancel("Exit", "Are you sure you want to close the window?"):
             self.root.destroy()
+
+    def on_drop(self, event):
+        if self.ventana_actual.isclean or not self.ventana_actual.tree.selection():
+            return
+        #obtener paths de archivos
+        ruta_archivo = event.data
+        if DEBUG: print(f"Archivo recibido:\n{ruta_archivo}")
 
     #funcion para vaciar los datos del iso de la memoria
     def close_iso(self, view:bool = True):
