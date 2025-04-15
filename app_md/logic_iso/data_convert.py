@@ -37,86 +37,30 @@ class DataConvert():
             
         return data_filter
     
-    def setDataIso(self, iso:str, files_imp:list, data_og:list):
-        #convertir en int las pos
-        for values in data_og:
-            values[1] = int(values[1], 16)
-            
-        with open(iso, "rb+") as file:
-            packFile = self.contenedor.paths_iso[self.contenedor.controlador.Pack_File][0]
-            file.seek(packFile)
-            data_size = []
-            if files_imp:
-                #obtener el size del archivo
-                tuplas = [(list(dic.keys())[0], list(dic.values())[0]) for dic in files_imp]
-                for value in range(len(tuplas)):
-                    if len(tuplas[value][1]) % 0x800 != 0:
-                        padding_needed = 0x800 - (len(tuplas[value][1]) % 0x800)
-                    data_size.append([tuplas[value][0], len(tuplas[value][1] + (b'\x00' * padding_needed))])
-                
-                idx_sz = 0
-            
-                for idx in range(len(data_og)):
-                    addres = None
-                    address_d = None
-                
-                    #numero de archivo
-                    filenum = int(data_size[idx_sz][0], 16)
-                
-                    #obtener la posicion del archivo
-                    if filenum == int(data_og[idx][0], 16):
-                        addres = data_og[idx][1]
-                    
-                        #obtener la long en int
-                        longnew = data_size[idx_sz][1]
-                        data_og[idx][2] = len(tuplas[idx_sz][1])
-                    
-                        #tomar el offset del siguiente archivo, en caso de ser el ultimo salir de aqui
-                        if filenum == 0x3711:
-                            break
-                        address_d = data_og[idx+1][1]
-                        
-                        if idx_sz < len(data_size)-1:
-                            idx_sz += 1
+    def setDataIso(self):
+        with open(self.contenedor.contenedor.path_iso+".compress", "r+b") as f:
+            nume_files = int(self.contenedor.edit_lbl_files.text(),16)
+            f.seek(self.contenedor.index_Packfile[0]+0x10)  # Mover el puntero a la posicion deseada
+            # self.data_iso_packfile = f.read(nume_files*0x10) # data indexs
 
-                        #comparar si la long nueva es mayor o menor
-                        if longnew > (address_d - addres) or longnew < (address_d - addres):
-                            dif = (longnew - (address_d - addres))
-                        
-                        #si es igual, ir al siguiente
-                        else:
-                            continue
-                    
-                        #arreglar indice
-                        for idx_n in range(idx+1, len(data_og), 1):
-                            data_og[idx_n][1] += dif
-                    
-            for datos in data_og:
-                packFile += 0x10
-                file.seek(packFile)
-                
-                #obtener el valor del juego ['50', '61', '63', '4b']
-                offsetN = datos[1] - (0x38000 + self.contenedor.paths_iso[self.contenedor.controlador.Pack_File][0])
-                offsetN //= 0x800
-                num_bytes = offsetN.to_bytes(4, byteorder='little')
-                num_bytes = " ".join(f"{byte:02x}" for byte in num_bytes)
-                offset_cv = self.getOffsetConvert(num_bytes, set_v=False)
+            for file in range(1, nume_files+1):
+                offset_bytes = self.contenedor.new_indexs[file-1][1] // 0x800
+                offset_bytes = " ".join(f"{byte:02x}" for byte in offset_bytes.to_bytes(4, byteorder='little'))
+                # if file == 3: print(f"{offset_bytes}-{file}")
+                new_offset = self.getOffsetConvert(offset_bytes, False)
+                new_size = self.getSizeConvert(f"{file-1:x}", self.contenedor.new_indexs[file-1][2].to_bytes(4, byteorder='little'), False)
 
-                #esribir el offset
-                file.write(bytes.fromhex(offset_cv))
-                #print(" ".join(f"{byte:02x}" for byte in bytes.fromhex(offset_cv)))
-                
-                #escribir la long
-                if type(datos[2]) == int:
-                    file.seek(packFile + 4)
-                    
-                    #obtener bytes de la long [b'/0x03/0x12/0x1b/0x00']
-                    bytes_long = datos[2].to_bytes(4, byteorder='little')
-                    
-                    long_cv = self.getSizeConvert(hex(int(datos[0], 16) -1)[2:], bytes_long, False)
-                    file.write(bytes.fromhex(long_cv))
-            if self.contenedor.controlador.DEBUG: print("writed datos")
-            # messagebox.showinfo("Success", f"saved:\n{iso}")
+                # if file == 3: print(f"{new_offset}-{file}")
+                #convertir el string "5061634b" a bytes
+                offset_bytes = bytes.fromhex(new_offset)
+                size_bytes = bytes.fromhex(new_size)
+
+                #escribir los offset y longitude nuevas
+                f.seek(self.contenedor.index_Packfile[0]+0x10+((file-1)*0x10))
+                f.write(offset_bytes)
+                f.write(size_bytes)
+
+        return ["compress_task finished"]
 
     def getOffsetConvert(self, val, set_v:bool=True):
         key:int

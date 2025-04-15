@@ -6,7 +6,7 @@ import qdarkstyle
 
 from PyQt5.QtWidgets import QAction, QApplication, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
 from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QPixmap
-from PyQt5.QtCore import Qt, QTimer, QThreadPool
+from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
 from app_md.windows.about_dialog import AboutDialog
 
@@ -109,7 +109,9 @@ class BaseApp:
             self.window.label.setPlainText(archivo)
 
     def close_iso(self):
-        pass
+        self.path_iso = None
+        self.window.label.setPlainText("path iso")
+        self.window.success_dialog(["path iso reseted"])
 
 class MainWindow(QMainWindow):
     def __init__(self, contenedor):
@@ -141,9 +143,9 @@ class MainWindow(QMainWindow):
         self.edit_lbl_files.setPlaceholderText("number of files")
 
         self.boton_extiso = QPushButton("extract iso", self)
-        self.boton_extiso.clicked.connect(self.abrir_dialogo)
+        self.boton_extiso.clicked.connect(self.extract_task)
         self.boton_compiso = QPushButton("compress iso", self)
-        self.boton_compiso.clicked.connect(self.abrir_dialogo)
+        self.boton_compiso.clicked.connect(self.compress_task)
 
         self.label = QPlainTextEdit("path iso", self)
         self.label.setReadOnly(True)
@@ -174,7 +176,10 @@ class MainWindow(QMainWindow):
         else:
             event.ignore()
 
-    def abrir_dialogo(self):
+    def extract_task(self):
+        if not self.contenedor.path_iso:
+            self.success_dialog(["open a file first"], "Warning!")
+            return
         self.setEnabled(False)
         QApplication.setOverrideCursor(Qt.WaitCursor)
         #cargar paths del iso
@@ -184,6 +189,7 @@ class MainWindow(QMainWindow):
             error_msg = traceback.format_exc()  # Obtener la traza del error como texto
             self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
             #resetear todo
+            self.contenedor.close_iso()
             return
 
         #obtener el path packfile
@@ -194,8 +200,9 @@ class MainWindow(QMainWindow):
             QApplication.restoreOverrideCursor()
             keys = "\n".join(self.paths_iso.keys())
             ErrorDialog(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}", self.icon_path).exec_()
-            self.paths_iso = None
+            # self.paths_iso = None
             #resetear todo
+            self.contenedor.close_iso()
             return
 
         #obtener los index verdaderos
@@ -234,6 +241,7 @@ class MainWindow(QMainWindow):
                         )
             if respuesta == QMessageBox.Cancel:
                 self.success_dialog(["Operation canceled by the user."])
+                # self.contenedor.close_iso()
                 return
 
         self.new_folder.mkdir(parents=True, exist_ok=True)
@@ -244,7 +252,70 @@ class MainWindow(QMainWindow):
         self.datafilemanager.task_save()
         
 
+    def compress_task(self):
+        if not self.contenedor.path_iso:
+            self.success_dialog(["open a file first"], "Warning!")
+            return
 
+        self.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        #cargar paths del iso
+        try:
+            self.paths_iso = IsoReader.listar_archivos_iso(self.contenedor.path_iso)
+        except Exception as e:
+            error_msg = traceback.format_exc()  # Obtener la traza del error como texto
+            self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
+            #resetear todo
+            self.contenedor.close_iso()
+            return
+
+        #obtener el path packfile
+        self.index_Packfile = self.paths_iso.get(self.edit_lb_pack.text())
+
+        if not self.index_Packfile:
+            self.setEnabled(True)
+            QApplication.restoreOverrideCursor()
+            keys = "\n".join(self.paths_iso.keys())
+            ErrorDialog(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}", self.icon_path).exec_()
+            # self.paths_iso = None
+            #resetear todo
+            self.contenedor.close_iso()
+            return
+
+        #carpeta con los archivos
+        file_iso = Path(self.contenedor.path_iso)
+        self.new_folder = file_iso.parent / f"ext_PACKFILE_BIN_{file_iso.stem}"
+        if not self.new_folder.exists():
+            self.success_dialog(f"The folder \"{self.new_folder.parent}\" does not exist in the file path.", "Warning!")
+            return
+
+        if QFile.exists(self.contenedor.path_iso+".compress"):
+            respuesta = QMessageBox.question(
+                            self,
+                            "Warning!",
+                            "The iso.compress exists; its file will be deleted.",
+                            QMessageBox.Ok | QMessageBox.Cancel,
+                            QMessageBox.Cancel
+                        )
+            if respuesta == QMessageBox.Cancel:
+                self.success_dialog(["Compress operation canceled by the user."])
+                # self.contenedor.contenedor.close_iso()
+                return
+
+        #importar los archivos a la iso backup
+        self.datafilemanager = DataFileManager(self)
+        self.datafilemanager.task_import()
+
+    def indexs_import(self, new_indexs):
+        self.new_indexs = new_indexs
+
+        self.dataconvert = DataConvert(self)
+
+        #crear una tarea asincrona
+        worker = Worker(self.dataconvert.setDataIso)
+        worker.signals.resultado.connect(self.success_dialog)
+        worker.signals.error.connect(self.manejar_error)
+        self.thread_pool.start(worker)
 
     def manejar_error(self, error_msg):
         #mostrar una ventana con el error
@@ -252,7 +323,7 @@ class MainWindow(QMainWindow):
         QApplication.restoreOverrideCursor()
         ErrorDialog(error_msg, self.icon_path).exec_()
 
-    def success_dialog(self, vaule):
+    def success_dialog(self, vaule, title:str="Success"):
         self.setEnabled(True)
         QApplication.restoreOverrideCursor()
-        QMessageBox.information(self, "Success", vaule[0])
+        QMessageBox.information(self, title, vaule[0])
