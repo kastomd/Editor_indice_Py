@@ -1,8 +1,10 @@
+from re import DEBUG
 import tkinter as tk
 from tkinter import RIGHT, Y, ttk
 from app.windows.window1 import Window1
 from app.logic.file_dialog import FileDialog
 from tkinter import messagebox
+from tkinterdnd2 import TkinterDnD, DND_FILES
 
 import sv_ttk
 import pywinstyles, sys
@@ -12,7 +14,7 @@ import threading
 
 class BaseApp:
     def __init__(self):
-        self.root = tk.Tk()
+        self.root = TkinterDnD.Tk()
         self.root.title("Editor indice")
         self.dimensions = [800,600]
         
@@ -62,6 +64,12 @@ class BaseApp:
         op_menu.add_command(label="view imported files", command= lambda: self.import_small_window(self.root))
         menu_bar.add_cascade(label="View", menu=op_menu)
         
+        #Menu File Utilities
+        fileUtilities_menu = tk.Menu(menu_bar, tearoff=0)
+        fileUtilities_menu.add_command(label="Compress iso", command= lambda: self.file_dialog.compress_iso())
+        fileUtilities_menu.add_command(label="Extract iso", command= lambda: self.file_dialog.extract_iso())
+        menu_bar.add_cascade(label="File Utilities", menu=fileUtilities_menu)
+        
         #Menu about
         about_menu = tk.Menu(menu_bar, tearoff=0)
         about_menu.add_command(label="About iso", command= lambda: self.about_iso(self.root))
@@ -71,7 +79,11 @@ class BaseApp:
         #establecer menu al root
         self.root.config(menu=menu_bar)
 
+        # Habilitar eventos de arrastrar y soltar
+        self.root.drop_target_register(DND_FILES)
+        self.root.dnd_bind('<<Drop>>', self.on_drop)
 
+    #cambia la ventana principal
     def change_window(self, ventana):
         if self.ventana_actual:
             self.ventana_actual.destroy()
@@ -91,6 +103,7 @@ class BaseApp:
             root.wm_attributes("-alpha", 0.99)
             root.wm_attributes("-alpha", 1)
 
+    #inciador
     def run(self):
         #usar theme light
         sv_ttk.use_light_theme()
@@ -105,6 +118,7 @@ class BaseApp:
         self.apply_theme_to_titlebar(self.root)
         self.root.mainloop()
         
+    #event tarea en hilo secundario
     def open_iso_task(self):
         def check_data_after():
             # Verificar si el hilo ha terminado
@@ -133,6 +147,7 @@ class BaseApp:
         proceso = threading.Thread(target=self.file_dialog.save_as_iso)
         proceso.start()
 
+    #ventana de archivos importados
     def import_small_window(self, root):
         if self.import_window is None or not self.import_window.winfo_exists():
             self.import_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
@@ -150,6 +165,7 @@ class BaseApp:
         else:
             self.import_window.lift()
         
+    #muestra ciertos datos importantes de la iso
     def about_iso(self, root):
         if self.about_iso_window is None or not self.about_iso_window.winfo_exists():
             self.about_iso_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
@@ -170,11 +186,13 @@ class BaseApp:
             self.about_iso_window.lift()
             
     def about(self, root):
+        #comprobar la instancia de la ventana
         if self.about_window is None or not self.about_window.winfo_exists():
-            self.about_window = tk.Toplevel(root)  # Crea una nueva ventana independiente
+            self.about_window = tk.Toplevel(root)
             self.about_window.geometry("260x100")
             self.about_window.title("About")
             
+            #quitar redimensionamiento
             self.about_window.resizable(False, False)
             
             label = ttk.Label(self.about_window, text="by kasto", foreground="blue", cursor="hand2")
@@ -184,15 +202,32 @@ class BaseApp:
                 "<Button-1>", lambda event: webbrowser.open("https://www.youtube.com/@KASTOMODDER15")
             )
             
-            switch = ttk.Checkbutton(self.about_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: sv_ttk.use_dark_theme() if self.check_var.get() else sv_ttk.use_light_theme())
+            #check para cambiar theme de la app
+            switch = ttk.Checkbutton(self.about_window, text='dark theme', style='Switch.TCheckbutton', variable=self.check_var, command=lambda: (
+                sv_ttk.use_dark_theme() or self.apply_theme_to_titlebar(root)
+                if self.check_var.get()
+                else sv_ttk.use_light_theme() or self.apply_theme_to_titlebar(root)
+            ))
+            
             switch.pack(side="bottom", anchor="w", padx=10, pady=15)
         else:
+            #traer al frente
             self.about_window.lift()
 
+    #event cerra app
     def on_close(self):
+        #evitar un cierre de la app no previsto
         if self.ventana_actual.isclean or messagebox.askokcancel("Exit", "Are you sure you want to close the window?"):
             self.root.destroy()
 
+    def on_drop(self, event):
+        if self.ventana_actual.isclean or not self.ventana_actual.tree.selection():
+            return
+        #obtener paths de archivos
+        ruta_archivo = event.data
+        if DEBUG: print(f"Archivo recibido:\n{ruta_archivo}")
+
+    #funcion para vaciar los datos del iso de la memoria
     def close_iso(self, view:bool = True):
         #confi cerrar iso
         if view and not self.ventana_actual.isclean and messagebox.askquestion("Warning", "Are you sure you want to do this?") == "no":

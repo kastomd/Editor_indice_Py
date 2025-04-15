@@ -79,3 +79,23 @@ class FileDialog:
             
             #arreglar los offsets y longitudes
             self.ttt.setDataIso(iso=file_path, files_imp=lista_ordenada, data_og=copy.deepcopy(self.datos))
+
+    def extract_iso(self):
+        ruta_archivo = filedialog.askopenfilename(
+        title="Choose a file-Extract iso",
+        filetypes=[("Iso files", "*.iso"), ("All files", "*.*")]
+        )
+        if not ruta_archivo:
+            return
+
+        #obtener la posicion del packfile
+        data_iso_files = iso_reader.IsoReader.listar_archivos_iso(ruta_iso = ruta_archivo)
+        #extraer el archivo
+        #convertir el offset
+        #convertir el size
+        #leer bytes del archivo
+        #guardar el archivo
+        pass
+
+    def compress_iso(self):
+        pass
