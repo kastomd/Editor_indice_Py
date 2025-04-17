@@ -83,6 +83,7 @@ class BaseApp:
         openiso_action = QAction("Open iso", self.window)
         closeiso_action = QAction("Close iso", self.window)
         exit_action = QAction("Exit", self.window)
+        exit_action.setShortcut(QKeySequence("Ctrl+W"))
 
         openiso_action.setShortcut(QKeySequence("Ctrl+O"))
         openiso_action.triggered.connect(self.open_iso)
@@ -92,6 +93,13 @@ class BaseApp:
         file_menu.addAction(openiso_action)
         file_menu.addAction(closeiso_action)
         file_menu.addAction(exit_action)
+
+        # Menu tool
+        tool_menu = menu_bar.addMenu("Tool")
+        extr_action = QAction("extract_tool", self.window)
+        extr_action.triggered.connect(self.show_about)
+        extr_action.setShortcut(QKeySequence("Ctrl+U"))
+        tool_menu.addAction(extr_action)
 
         # Menu About
         help_menu = menu_bar.addMenu("Help")
