@@ -1,5 +1,5 @@
-﻿from PyQt5.QtCore import QThreadPool, QFile
-from PyQt5.QtWidgets import QMessageBox
+﻿from PyQt5.QtCore import QThreadPool
+# from PyQt5.QtWidgets import QMessageBox
 
 
 from app_md.logic_iso.worker import Worker
