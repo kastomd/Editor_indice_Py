@@ -1,6 +1,3 @@
 ﻿pycdlib
-sv_ttk
-pywinstyles
-tkinterdnd2
 PyQt5
 qdarkstyle
