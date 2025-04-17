@@ -3,6 +3,9 @@
 # from tkinter import messagebox
 
 
+# from PyQt5.QtWidgets import QMessageBox
+
+
 class DataConvert():
     def __init__(self, conte):
         self.contenedor = conte
@@ -60,7 +63,23 @@ class DataConvert():
                 f.write(offset_bytes)
                 f.write(size_bytes)
 
-        return ["compress_task finished"]
+            #escribir el total de archivos
+            f.seek(self.contenedor.index_Packfile[0]+4)
+            files_old =f.read(4)
+            files_old = int.from_bytes(files_old, byteorder="little")
+            reem = ""
+            if files_old != nume_files:
+                # respuesta = self.contenedor.question_dialog("The number of files in the old ISO is different from the current one.\nDo you want to write the total number of files declared in the program?")
+                
+                # if respuesta != QMessageBox.Cancel:
+                f.seek(self.contenedor.index_Packfile[0]+4)
+                new_size_files = nume_files.to_bytes(4, byteorder="little")
+                f.write(new_size_files)
+
+                new_size_files = "".join(f"{byte:02x}" for byte in new_size_files)
+                reem = f".\nThe value at position \"0x{self.contenedor.index_Packfile[0]+4:X}\" was replaced with \"0x{new_size_files}\"."
+
+        return [f"compress_task finished{reem}"]
 
     def getOffsetConvert(self, val, set_v:bool=True):
         key:int

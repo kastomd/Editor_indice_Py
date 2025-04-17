@@ -232,15 +232,16 @@ class MainWindow(QMainWindow):
         file_iso = Path(self.contenedor.path_iso)
         self.new_folder = file_iso.parent / f"ext_PACKFILE_BIN_{file_iso.stem}"
         if self.new_folder.exists():
-            respuesta = QMessageBox.question(
-                            self,
-                            "Warning!",
-                            "The folder exists; its content will be deleted.",
-                            QMessageBox.Ok | QMessageBox.Cancel,
-                            QMessageBox.Cancel
-                        )
+            respuesta = self.question_dialog("The folder exists; its content will be deleted.")
+            # respuesta = QMessageBox.question(
+            #                 self,
+            #                 "Warning!",
+            #                 "The folder exists; its content will be deleted.",
+            #                 QMessageBox.Ok | QMessageBox.Cancel,
+            #                 QMessageBox.Cancel
+            #             )
             if respuesta == QMessageBox.Cancel:
-                self.success_dialog(["Operation canceled by the user."])
+                self.success_dialog(["Extract_operation canceled by the user."])
                 # self.contenedor.close_iso()
                 return
 
@@ -290,13 +291,14 @@ class MainWindow(QMainWindow):
             return
 
         if QFile.exists(self.contenedor.path_iso+".compress"):
-            respuesta = QMessageBox.question(
-                            self,
-                            "Warning!",
-                            "The iso.compress exists; its file will be deleted.",
-                            QMessageBox.Ok | QMessageBox.Cancel,
-                            QMessageBox.Cancel
-                        )
+            respuesta = self.question_dialog("The iso.compress exists; its file will be deleted.")
+            # respuesta = QMessageBox.question(
+            #                 self,
+            #                 "Warning!",
+            #                 "The iso.compress exists; its file will be deleted.",
+            #                 QMessageBox.Ok | QMessageBox.Cancel,
+            #                 QMessageBox.Cancel
+            #             )
             if respuesta == QMessageBox.Cancel:
                 self.success_dialog(["Compress operation canceled by the user."])
                 # self.contenedor.contenedor.close_iso()
@@ -327,3 +329,14 @@ class MainWindow(QMainWindow):
         self.setEnabled(True)
         QApplication.restoreOverrideCursor()
         QMessageBox.information(self, title, vaule[0])
+
+    def question_dialog(self, content, title:str="Warning!"):
+        respuesta = QMessageBox.question(
+                            self,
+                            title,
+                            content,
+                            QMessageBox.Ok | QMessageBox.Cancel,
+                            QMessageBox.Cancel
+                        )
+
+        return respuesta
