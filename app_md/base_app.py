@@ -5,16 +5,17 @@ import qdarkstyle
 
 
 from PyQt5.QtWidgets import QAction, QApplication, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
-from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QPixmap
+from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QKeySequence, QPixmap
 from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
-from app_md.windows.about_dialog import AboutDialog
 
+from app_md.windows.about_dialog import AboutDialog
 from app_md.logic_iso.iso_reader import IsoReader
 from app_md.windows.error_dialog import ErrorDialog
 from app_md.logic_iso.data_convert import DataConvert
 from app_md.logic_iso.worker import Worker
 from app_md.logic_iso.data_file_manager import DataFileManager
+from app_md.windows.open_folder_link import Open_folder_link
 
 import os
 import shutil
@@ -47,7 +48,7 @@ class BaseApp:
         self.splash.show()
 
         # Esperar 2 segundos y luego lanzar la ventana principal
-        QTimer.singleShot(2000, self.start_main_window)
+        QTimer.singleShot(1250, self.start_main_window)
 
     def start_main_window(self):
         # Crear y mostrar ventana principal
@@ -82,14 +83,23 @@ class BaseApp:
         openiso_action = QAction("Open iso", self.window)
         closeiso_action = QAction("Close iso", self.window)
         exit_action = QAction("Exit", self.window)
+        exit_action.setShortcut(QKeySequence("Ctrl+W"))
 
+        openiso_action.setShortcut(QKeySequence("Ctrl+O"))
         openiso_action.triggered.connect(self.open_iso)
-        closeiso_action.triggered.connect(self.close_iso)
+        closeiso_action.triggered.connect(lambda :self.close_iso(view= False))
         exit_action.triggered.connect(self.window.close)
 
         file_menu.addAction(openiso_action)
         file_menu.addAction(closeiso_action)
         file_menu.addAction(exit_action)
+
+        # Menu tool
+        tool_menu = menu_bar.addMenu("Tool")
+        extr_action = QAction("extract_tool", self.window)
+        extr_action.triggered.connect(self.show_about)
+        extr_action.setShortcut(QKeySequence("Ctrl+U"))
+        tool_menu.addAction(extr_action)
 
         # Menu About
         help_menu = menu_bar.addMenu("Help")
@@ -108,7 +118,16 @@ class BaseApp:
             self.path_iso = archivo
             self.window.label.setPlainText(archivo)
 
-    def close_iso(self):
+    def close_iso(self, view=True):
+        if not self.path_iso:
+            return
+        #confirmacion para limpiar el path iso
+        if self.path_iso and not view:
+            answer = self.window.question_dialog("Are you sure you want to close the ISO path of the program?")
+
+            if answer == QMessageBox.Cancel:
+                return
+
         self.path_iso = None
         self.window.label.setPlainText("path iso")
         self.window.success_dialog(["path iso reseted"])
@@ -189,7 +208,7 @@ class MainWindow(QMainWindow):
             error_msg = traceback.format_exc()  # Obtener la traza del error como texto
             self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
             #resetear todo
-            self.contenedor.close_iso()
+            # self.contenedor.close_iso(False)
             return
 
         #obtener el path packfile
@@ -202,7 +221,7 @@ class MainWindow(QMainWindow):
             ErrorDialog(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}", self.icon_path).exec_()
             # self.paths_iso = None
             #resetear todo
-            self.contenedor.close_iso()
+            # self.contenedor.close_iso(False)
             return
 
         #obtener los index verdaderos
@@ -267,7 +286,7 @@ class MainWindow(QMainWindow):
             error_msg = traceback.format_exc()  # Obtener la traza del error como texto
             self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
             #resetear todo
-            self.contenedor.close_iso()
+            # self.contenedor.close_iso(False)
             return
 
         #obtener el path packfile
@@ -277,17 +296,17 @@ class MainWindow(QMainWindow):
             self.setEnabled(True)
             QApplication.restoreOverrideCursor()
             keys = "\n".join(self.paths_iso.keys())
-            ErrorDialog(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}", self.icon_path).exec_()
+            self.manejar_error(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}")
             # self.paths_iso = None
             #resetear todo
-            self.contenedor.close_iso()
+            # self.contenedor.close_iso()
             return
 
         #carpeta con los archivos
         file_iso = Path(self.contenedor.path_iso)
         self.new_folder = file_iso.parent / f"ext_PACKFILE_BIN_{file_iso.stem}"
         if not self.new_folder.exists():
-            self.success_dialog(f"The folder \"{self.new_folder.parent}\" does not exist in the file path.", "Warning!")
+            self.manejar_error(f"The folder \"{self.new_folder.name}\" does not exist in the file path.")
             return
 
         if QFile.exists(self.contenedor.path_iso+".compress"):
@@ -328,10 +347,15 @@ class MainWindow(QMainWindow):
     def success_dialog(self, vaule, title:str="Success"):
         self.setEnabled(True)
         QApplication.restoreOverrideCursor()
-        QMessageBox.information(self, title, vaule[0])
+        if 'href' not in vaule[0]:
+            QMessageBox.information(self, title, vaule[0])
+            return
+
+        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder)
+        self.secundaria.exec_()
 
     def question_dialog(self, content, title:str="Warning!"):
-        respuesta = QMessageBox.question(
+        answer = QMessageBox.question(
                             self,
                             title,
                             content,
@@ -339,4 +363,4 @@ class MainWindow(QMainWindow):
                             QMessageBox.Cancel
                         )
 
-        return respuesta
+        return answer

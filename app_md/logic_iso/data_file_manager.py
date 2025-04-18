@@ -39,7 +39,8 @@ class DataFileManager():
                 with open(path_file, "wb") as f:
                     f.write(dat_bytes)
 
-        return ["export_task finished"]
+        res = 'export_task finished <a href="#">open folder</a>'
+        return [res]
 
     def import_files(self):
         self.new_indexs = []#guarda los offset y longitudes
