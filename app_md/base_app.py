@@ -328,7 +328,8 @@ class MainWindow(QMainWindow):
         self.datafilemanager.task_import()
 
     def indexs_import(self, new_indexs):
-        self.new_indexs = new_indexs
+        self.new_indexs = new_indexs[0]
+        self.isleftover = new_indexs[1]
 
         self.dataconvert = DataConvert(self)
 

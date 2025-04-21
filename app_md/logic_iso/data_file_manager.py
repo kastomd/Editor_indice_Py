@@ -26,6 +26,7 @@ class DataFileManager():
         self.thread_pool.start(worker)
 
     def save_files(self):
+        res = 'export_task finished <a href="#">open folder</a>'
         with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
             for dat_file in self.contenedor.indexs:
                 dat_bytes = None
@@ -39,7 +40,23 @@ class DataFileManager():
                 with open(path_file, "wb") as f:
                     f.write(dat_bytes)
 
-        res = 'export_task finished <a href="#">open folder</a>'
+            #comprobar si existen datos despues del ultimo archivo
+            ulOfsset = f_iso.tell()
+            size_iso = f_iso.seek(0, 2) or f_iso.tell()
+            if ulOfsset != size_iso:
+                f_iso.seek(ulOfsset)
+                dat_bytes = f_iso.read(size_iso-ulOfsset)
+
+                name_file ="leftover.unk"
+                path_file = self.contenedor.new_folder / name_file
+
+                with open(path_file, "wb") as f:
+                    f.write(dat_bytes)
+
+                res+= f"<br><br>The leftover.unk file was created, with a size<br>of {size_iso-ulOfsset} bytes."
+
+                if size_iso-ulOfsset < 0:
+                    res+="<br><br>Your leftover.unk file has a negative size. Check the entered<br>parameters, as they might be incorrect."
         return [res]
 
     def import_files(self):
@@ -78,5 +95,16 @@ class DataFileManager():
                     self.new_indexs.append([file_number, offset, current_size])
                     f_iso_c.write(content)
                     offset += len(content)
+
+            self.new_indexs = [self.new_indexs, False]
+            #escribir el restante si existe
+            path_file = self.contenedor.new_folder / "leftover.unk"
+
+            if path_file.exists():
+                with open(path_file, "rb") as file_content:
+                    content = file_content.read()
+                    f_iso_c.write(content)
+
+                self.new_indexs[1] = True
 
         return self.new_indexs

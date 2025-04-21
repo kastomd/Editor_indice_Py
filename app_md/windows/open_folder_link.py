@@ -1,11 +1,13 @@
-import os
+﻿import os
 from PyQt5.QtWidgets import QDialog, QLabel, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
 
 class Open_folder_link(QDialog):
     def __init__(self, parent_font=None, parent_icon=None, direc="", messag=""):
         super().__init__()
+        #directorio de la carpeta
         self.direc = direc
+        #mensaje personalizado
         self.message = messag
         self.init_ui()
 
@@ -16,6 +18,7 @@ class Open_folder_link(QDialog):
             self.setWindowIcon(parent_icon)
 
     def init_ui(self):
+        #habilita el qlabel con el link clicked
         label = QLabel(self.message)
         label.setTextInteractionFlags(Qt.TextBrowserInteraction)
         label.setOpenExternalLinks(False)

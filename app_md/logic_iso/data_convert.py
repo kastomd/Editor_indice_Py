@@ -79,6 +79,9 @@ class DataConvert():
                 new_size_files = "".join(f"{byte:02x}" for byte in new_size_files)
                 reem = f".\nThe value at position \"0x{self.contenedor.index_Packfile[0]+4:X}\" was replaced with \"0x{new_size_files}\"."
 
+            if self.contenedor.isleftover:
+                reem+="\n\nThe leftover.unk file was also written to the ISO."
+
         return [f"compress_task finished{reem}"]
 
     def getOffsetConvert(self, val, set_v:bool=True):
