@@ -111,12 +111,23 @@ class BaseApp:
         self.about = AboutDialog(self)
         self.about.show_about()
 
-    def open_iso(self):
-        archivo, _ = QFileDialog.getOpenFileName(self.window, "Choose file iso", "", 
-                                                 "All files (*);;iso file (*.iso)")
-        if archivo:
-            self.path_iso = archivo
-            self.window.label.setPlainText(archivo)
+    def open_iso(self, file_path=None):
+        # Verifica si se arrastro un archivo
+        if not file_path:
+            # Si no, abre el dialogo de archivos
+            archivo, _ = QFileDialog.getOpenFileName(
+                self.window,
+                "Choose ISO file",
+                "",
+                "ISO files (*.iso);;All files (*)"
+            )
+            file_path = archivo  # Asigna lo seleccionado
+
+        # Si se obtuvo un archivo valido (arrastrado o desde dialogo)
+        if file_path:
+            self.path_iso = file_path
+            self.window.label.setPlainText(file_path)
+            self.window.success_dialog(vaule=["File loaded"])
 
     def close_iso(self, view=True):
         if not self.path_iso:
@@ -135,7 +146,9 @@ class BaseApp:
 class MainWindow(QMainWindow):
     def __init__(self, contenedor):
         super().__init__()
+        #clase baseapp
         self.contenedor = contenedor
+        #version y icon del app
         self.version = self.contenedor.version
         self.icon_path = self.contenedor.icon
 
@@ -144,6 +157,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"Editor indice tag team - v:{self.version}")
         self.setFixedSize(550, 255)
         self.setWindowIcon(QIcon(str(self.icon_path)))
+
+        #acepta drop
+        self.setAcceptDrops(True)
 
         # Crear el widget central
         central_widget = QWidget()
@@ -181,6 +197,25 @@ class MainWindow(QMainWindow):
         # Asignar el layout al widget central
         central_widget.setLayout(layout)
 
+
+    def dragEnterEvent(self, event):
+        #verifica si lo arrastrado son archivos
+        if event.mimeData().hasUrls():
+            event.setDropAction(Qt.MoveAction)
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        #verifica y asigna un solo archivo arrastrado
+        urls = event.mimeData().urls()
+    
+        if len(urls) != 1:
+            self.manejar_error("Only one file is allowed.")
+            return  # Ignora si hay mas de uno
+
+        filepath = urls[0].toLocalFile()
+        self.contenedor.open_iso(file_path=filepath)
 
     def closeEvent(self, event):
         reply = QMessageBox.question(
@@ -328,7 +363,8 @@ class MainWindow(QMainWindow):
         self.datafilemanager.task_import()
 
     def indexs_import(self, new_indexs):
-        self.new_indexs = new_indexs
+        self.new_indexs = new_indexs[0]
+        self.isleftover = new_indexs[1]
 
         self.dataconvert = DataConvert(self)
 
