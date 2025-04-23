@@ -58,6 +58,6 @@ class AboutDialog(QDialog):
         self.exec_()
 
 
-def show_about(self):
-    about_dialog = AboutDialog()
-    about_dialog.show_about()
+# def show_about():
+#     about_dialog = AboutDialog()
+#     about_dialog.show_about()

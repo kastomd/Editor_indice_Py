@@ -1,6 +1,6 @@
 ﻿from pathlib import Path
 from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QPlainTextEdit, QPushButton, QApplication
+    QDialog, QVBoxLayout, QPlainTextEdit, QPushButton
 )
 
 from app_md.base_app import QIcon
