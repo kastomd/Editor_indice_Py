@@ -48,8 +48,8 @@ class BaseApp:
         self.splash.showMessage("Cargando...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
         self.splash.show()
 
-        # Esperar 2 segundos y luego lanzar la ventana principal
-        QTimer.singleShot(1250, self.start_main_window)
+        # Esperar y luego lanzar la ventana principal
+        QTimer.singleShot(620, self.start_main_window)
 
     def start_main_window(self):
         # Crear y mostrar ventana principal
@@ -227,17 +227,16 @@ class MainWindow(QMainWindow):
             return
 
         filepath = urls[0].toLocalFile()
-        self.contenedor.open_iso(file_path=filepath)
+        #confirmacion para abrir el iso
+        reply = self.question_dialog(content="Are you sure you want to open the file?")
+
+        if reply != QMessageBox.Cancel:
+            self.contenedor.open_iso(file_path=filepath)
 
     def closeEvent(self, event):
-        reply = QMessageBox.question(
-            self,
-            "Confirm exit",
-            "Are you sure you want to close the Editor application?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        reply = self.question_dialog(content="Are you sure you want to close the application?", title="Confirm exit")
+
+        if reply == QMessageBox.Ok:
             event.accept()
         else:
             event.ignore()
