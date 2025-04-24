@@ -47,8 +47,8 @@ class BaseApp:
         self.splash.showMessage("Cargando...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
         self.splash.show()
 
-        # Esperar 2 segundos y luego lanzar la ventana principal
-        QTimer.singleShot(1250, self.start_main_window)
+        # Esperar y luego lanzar la ventana principal
+        QTimer.singleShot(620, self.start_main_window)
 
     def start_main_window(self):
         # Crear y mostrar ventana principal
