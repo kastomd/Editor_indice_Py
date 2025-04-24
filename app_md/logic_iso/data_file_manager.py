@@ -65,7 +65,7 @@ class DataFileManager():
 
 
     def import_files(self):
-        self.new_indexs = []  # guarda los offset y longitudes
+        new_indexs = []  # guarda los offset y longitudes
         offset = 0
         num_files = int(self.contenedor.edit_lbl_files.text(), 16) #total de archivos
         size_indexs = (num_files + 1) * 0x10
@@ -93,17 +93,17 @@ class DataFileManager():
                         padding = 0x800 - (current_size % 0x800)
                         content += b'\x00' * padding
 
-                    self.new_indexs.append([file_number, offset, current_size])
+                    new_indexs.append([file_number, offset, current_size])
                     f_iso_c.write(content)
                     offset += len(content)
 
-            self.new_indexs = [self.new_indexs, False]
+            new_indexs = [new_indexs, False]
 
             # Escribir leftover.unk si existe
             path_file = self.contenedor.new_folder / "leftover.unk"
             if path_file.exists():
                 with open(path_file, "rb") as file_content:
                     f_iso_c.write(file_content.read())
-                self.new_indexs[1] = True
+                new_indexs[1] = True
 
-        return self.new_indexs
+        return new_indexs
