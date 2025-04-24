@@ -16,6 +16,7 @@ from app_md.logic_iso.data_convert import DataConvert
 from app_md.logic_iso.worker import Worker
 from app_md.logic_iso.data_file_manager import DataFileManager
 from app_md.windows.open_folder_link import Open_folder_link
+from app_md.windows.extract_tool import ExtractTool
 
 import os
 import shutil
@@ -75,6 +76,10 @@ class BaseApp:
         sys.exit(self.app.exec_())
 
     def init_menu(self):
+        #inciar windows class
+        self.about = AboutDialog(self)
+        self.extract_w = ExtractTool(window=self.window)
+
         # Menu principal
         menu_bar = self.window.menuBar()
 
@@ -97,7 +102,7 @@ class BaseApp:
         # Menu tool
         tool_menu = menu_bar.addMenu("Tool")
         extr_action = QAction("extract_tool", self.window)
-        extr_action.triggered.connect(self.show_about)
+        extr_action.triggered.connect(self.show_extract)
         extr_action.setShortcut(QKeySequence("Ctrl+U"))
         tool_menu.addAction(extr_action)
 
@@ -108,8 +113,11 @@ class BaseApp:
         help_menu.addAction(about_action)
 
     def show_about(self):
-        self.about = AboutDialog(self)
         self.about.show_about()
+
+    def show_extract(self):
+        self.extract_w.show_extract()
+        self.window.hide()
 
     def open_iso(self, file_path=None):
         # Verifica si se arrastro un archivo
@@ -214,6 +222,10 @@ class MainWindow(QMainWindow):
             self.manejar_error("Only one file is allowed.")
             return  # Ignora si hay mas de uno
 
+        #confirmacion para cargar el path
+        if self.question_dialog("are you sure you want open iso file?") == QMessageBox.Cancel:
+            return
+
         filepath = urls[0].toLocalFile()
         self.contenedor.open_iso(file_path=filepath)
 
@@ -221,7 +233,7 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Confirm exit",
-            "Are you sure you want to close the application?",
+            "Are you sure you want to close the Editor application?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -400,3 +412,13 @@ class MainWindow(QMainWindow):
                         )
 
         return answer
+
+    def to_the_front(self):
+        self.show()
+        self.contenedor.extract_w.hide()
+
+        # Si esta minimizada, la restauramos
+        if self.windowState() & Qt.WindowMinimized:
+            self.setWindowState(Qt.WindowNoState)
+        self.raise_()
+        self.activateWindow()
