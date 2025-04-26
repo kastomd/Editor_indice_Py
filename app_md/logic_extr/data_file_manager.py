@@ -1,0 +1,79 @@
+﻿import json
+
+
+class DataFileManager():
+    def __init__(self):
+        self.dataKey = {
+            b"\x00\x00\x02\xb7": {"row": 1},
+            b"\x00\x00\x00\x23": {"row": 2},
+            b"\x00\x00\x00\x02": {"row": 3},
+            b"\x00\x00\x00\x0c": {"row": 0},
+            b"\x00\x00\x00\x1b": {"row": 0},
+            b"\x00\x00\x00\x46": {"row": 2},
+            b"\x00\x00\x00\x0f": {"row": 3},
+            b"\x00\x00\x00\x08": {"row": 1},
+            b"\x00\x00\x00\x10": {"row": 3},
+            b"\x00\x00\x00\xff": {"row": 3},
+            b"\x00\x00\x00\x14": {"row": 2},
+            b"\x00\x00\x00\x0a": {"row": 1},
+            b"\x00\x00\x00\x4b": {"row": 0},
+            b"\x00\x00\x00\x1e": {"row": 0},
+            b"\x00\x00\x00\x35": {"row": 2},
+            b"\x00\x00\x00\x1d": {"row": 0},
+            b"\x00\x00\x00\x25": {"row": 2},
+            b"\x00\x00\x00\x63": {"row": 2},
+            b"\x00\x00\x00\x60": {"row": 3},
+            b"\x00\x00\x00\x06": {"row": 2},
+            b"\x00\x00\x00\x1a": {"row": 1},
+            b"\x00\x00\x01\xf1": {"row": 3},
+            b"\x00\x00\x00\x05": {"row": 2},
+            b"\x00\x00\x00\xfa": {"row": 1},
+            b"\x00\x00\x00\x0b": {"row": 0},
+            b"\x00\x00\x00\x27": {"row": 1},
+            b"\x00\x00\x00\x04": {"row": 2},
+            b"\x00\x00\x00\x01": {"row": 3},
+            b"\x00\x00\x00\x43": {"row": 2},
+            b"\x00\x00\x00\x2e": {"row": 0},
+            b"\x00\x00\x00\x37": {"row": 1},
+            b"\x00\x00\x00\x07": {"row": 1},
+            b"\x00\x00\x00\x3f": {"row": 3},
+            b"\x00\x00\x00\x1c": {"row": 0},
+            b"\x00\x00\x00\x6d": {"row": 0},
+            b"\x64\x00\x10\x27": {"star": 0x48, "eoinx": False},
+            b"\x64\x00\x00\x00": {"star": 0x48, "eoinx": False},
+        }
+
+
+        self.entry = {
+            "key": "00",
+            "endianness": "big",
+            "pad_offset": True,
+            "ispair": True
+        }
+
+        self.data = None # data json
+
+    def guess_endianness(self, data: bytes) -> str:
+        little = int.from_bytes(data, byteorder='little')
+        big = int.from_bytes(data, byteorder='big')
+
+        if little < big:
+            return 'little'
+        elif big < little:
+            return 'big'
+        else:
+            return 'unknown_endian'
+
+    def update_entry(self, key_bytes: bytes, endianness: str, pad_offset: bool, ispair: bool):
+        self.entry["key"] = key_bytes.hex()
+        self.entry["endianness"] = endianness
+        self.entry["pad_offset"] = pad_offset
+        self.entry["ispair"] = ispair
+
+        self.data = json.dumps(self.entry, indent=4)
+
+    def load_entry(self, path):
+        with open(path, "r") as f:
+            self.entry = json.load(f)
+            self.data = json.dumps(self.entry, indent=4)
+

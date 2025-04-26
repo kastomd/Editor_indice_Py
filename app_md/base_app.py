@@ -45,7 +45,7 @@ class BaseApp:
         # Cargar imagen del splash
         splash_pix = QPixmap(str(Path(__file__).resolve().parent / "images" / "splash.png"))
         self.splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-        self.splash.showMessage("Cargando...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
+        self.splash.showMessage("Loading...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
         self.splash.show()
 
         # Esperar y luego lanzar la ventana principal
@@ -234,7 +234,7 @@ class MainWindow(QMainWindow):
             self.contenedor.open_iso(file_path=filepath)
 
     def closeEvent(self, event):
-        reply = self.question_dialog(content="Are you sure you want to close the application?", title="Confirm exit")
+        reply = self.question_dialog(content="Are you sure you want to close the Editor application?", title="Confirm exit")
 
         if reply == QMessageBox.Ok:
             event.accept()

@@ -1,7 +1,10 @@
+﻿from pathlib import Path
 from PyQt5.QtGui import QCursor, QKeySequence
 from PyQt5.QtWidgets import QAction, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMenu, QMenuBar, QMessageBox, QPushButton, QVBoxLayout
 from PyQt5.QtCore import Qt, pyqtSignal
 
+from app_md.logic_extr.data_file_manager import DataFileManager
+from app_md.logic_extr.data_convert import DataConvert
 
 class ExtractTool(QDialog):
     def __init__(self, window=None):
@@ -9,6 +12,9 @@ class ExtractTool(QDialog):
         self.path_file = None
         self.contenedor = window
         self.setAcceptDrops(True)
+
+        self.datafilemanager = DataFileManager()
+        self.dataconvert = DataConvert(self)
 
         self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint |
                             Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
@@ -46,7 +52,7 @@ class ExtractTool(QDialog):
 
         # Contenedor de arrastrar y soltar (ahora ClickableFrame)
         drop_frame = ClickableFrame()
-        drop_frame.clicked.connect(self.abrir_explorador)
+        drop_frame.clicked.connect(self.open_file_choose)
 
         drop_frame.setStyleSheet("""
             QFrame {
@@ -57,12 +63,15 @@ class ExtractTool(QDialog):
         drop_layout = QVBoxLayout()
         self.drop_label = QLabel("Drop a file here or click to open")
         self.drop_label.setAlignment(Qt.AlignCenter)
+        self.drop_label.setWordWrap(True)
         drop_layout.addWidget(self.drop_label)
 
         # Botones
         buttons_layout = QHBoxLayout()
         btn_extraer = QPushButton("Extract")
+        btn_extraer.clicked.connect(self.extract_file)
         btn_comprimir = QPushButton("Compress")
+        btn_comprimir.clicked.connect(self.compress_file)
 
         buttons_layout.addWidget(btn_extraer)
         buttons_layout.addWidget(btn_comprimir)
@@ -72,11 +81,23 @@ class ExtractTool(QDialog):
         layout.addWidget(drop_frame)
         self.setLayout(layout)
 
-    def abrir_explorador(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar archivo", "", "Todos los archivos (*)")
+
+    def extract_file(self):
+        self.dataconvert.load_offsets()
+        self.dataconvert.save_files()
+
+
+
+
+    def compress_file(self):
+        self.dataconvert.import_config()
+
+    def open_file_choose(self, view=True, file_path=None):
+        if view: file_path, _ = QFileDialog.getOpenFileName(self, "Choose a file", "", "All files (*)")
         if file_path:
-            self.path_file = file_path
+            self.path_file = Path(file_path)
             self.drop_label.setText(f"file: {file_path}")
+            self.contenedor.success_dialog(["file opened"])
 
     def show_extract(self):
         self.show()
@@ -103,25 +124,31 @@ class ExtractTool(QDialog):
             self.contenedor.manejar_error("Only one file is allowed.")
             return  # Ignora si hay mas de uno
 
+        reply = self.contenedor.question_dialog(content="Are you sure you want to open the file?")
+        if reply == QMessageBox.Cancel:
+            return
+
         #asginar path del archivo
         filepath = urls[0].toLocalFile()
-        self.drop_label.setText(f"file: {filepath}")
-        self.path_file = filepath
+        self.open_file_choose(view=False,file_path=filepath)
 
     def closeEvent(self, event):
-        reply = QMessageBox.question(
-            self,
-            "Confirm exit",
-            "Are you sure you want to close the Extract application?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
+        reply = self.contenedor.question_dialog(content="Are you sure you want to close the Extract application?",title="Confirm exit")
+
+        if reply == QMessageBox.Ok:
             event.accept()
         else:
             event.ignore()
 
     def close_file(self):
+        if not self.path_file:
+            return
+
+        reply = self.contenedor.question_dialog(content="Are you sure you want to close the file?")
+
+        if reply == QMessageBox.Cancel:
+            return
+
         self.drop_label.setText("Drop a file here")
         self.path_file = None
 
