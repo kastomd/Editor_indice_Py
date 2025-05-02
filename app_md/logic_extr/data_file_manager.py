@@ -39,16 +39,16 @@ class DataFileManager():
             b"\x00\x00\x00\x3f": {"row": 3},
             b"\x00\x00\x00\x1c": {"row": 0},
             b"\x00\x00\x00\x6d": {"row": 0},
-            b"\x64\x00\x10\x27": {"star": 0x48, "eoinx": False},
-            b"\x64\x00\x00\x00": {"star": 0x48, "eoinx": False},
+            b"\x64\x00\x10\x27": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"},
+            b"\x64\x00\x00\x00": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"}
         }
 
 
         self.entry = {
-            "key": "00",
-            "endianness": "big",
-            "pad_offset": True,
-            "ispair": True
+            "key": "00",#key inicial del archivo, tambien contiene datos desconocidos de los txt
+            "endianness": "big",#endian de los offsets
+            "pad_offset": True,#indica si los offsets terminan en la columna 16, se rellena con 00 hasta esa columna
+            "ispair": True #indica si el ultimo offset marca hasta el final del archivo
         }
 
         self.data = None # data json

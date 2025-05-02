@@ -1,10 +1,11 @@
 ﻿from pathlib import Path
 from PyQt5.QtGui import QCursor, QKeySequence
-from PyQt5.QtWidgets import QAction, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMenu, QMenuBar, QMessageBox, QPushButton, QVBoxLayout
-from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QMenu, QMenuBar, QMessageBox, QPushButton, QVBoxLayout
+from PyQt5.QtCore import QThreadPool, Qt, pyqtSignal
 
 from app_md.logic_extr.data_file_manager import DataFileManager
 from app_md.logic_extr.data_convert import DataConvert
+from app_md.logic_iso.worker import Worker
 
 class ExtractTool(QDialog):
     def __init__(self, window=None):
@@ -15,6 +16,7 @@ class ExtractTool(QDialog):
 
         self.datafilemanager = DataFileManager()
         self.dataconvert = DataConvert(self)
+        self.thread_pool = QThreadPool()
 
         self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint |
                             Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
@@ -50,7 +52,7 @@ class ExtractTool(QDialog):
 
         layout.setMenuBar(self.menu_bar)
 
-        # Contenedor de arrastrar y soltar (ahora ClickableFrame)
+        # Contenedor de arrastrar y soltar
         drop_frame = ClickableFrame()
         drop_frame.clicked.connect(self.open_file_choose)
 
@@ -60,10 +62,13 @@ class ExtractTool(QDialog):
                 border-radius: 10px;
             }
         """)
+        drop_frame.setMinimumSize(400, 200)
+
         drop_layout = QVBoxLayout()
         self.drop_label = QLabel("Drop a file here or click to open")
         self.drop_label.setAlignment(Qt.AlignCenter)
         self.drop_label.setWordWrap(True)
+
         drop_layout.addWidget(self.drop_label)
 
         # Botones
@@ -79,18 +84,47 @@ class ExtractTool(QDialog):
         drop_frame.setLayout(drop_layout)
 
         layout.addWidget(drop_frame)
+
+        self.ischeckbox = False
+        self.pad_to_16_checkbox = QCheckBox("Padding to 16")
+        self.pad_to_16_checkbox.stateChanged.connect(self.on_pad_checkbox_changed)
+        layout.addWidget(self.pad_to_16_checkbox, alignment=Qt.AlignBottom | Qt.AlignLeft)
+
         self.setLayout(layout)
 
+    def on_pad_checkbox_changed(self, state):
+        self.ischeckbox = (state == Qt.Checked)
+        # print(state == Qt.Checked)
 
     def extract_file(self):
-        self.dataconvert.load_offsets()
-        self.dataconvert.save_files()
-
-
+        self.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        
+        if not self.path_file:
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            return
+        
+        #crear una tarea asincrona
+        worker = Worker(self.dataconvert.load_offsets)
+        worker.signals.resultado.connect(self.contenedor.success_dialog)
+        worker.signals.error.connect(self.contenedor.manejar_error)
+        self.thread_pool.start(worker)
 
 
     def compress_file(self):
-        self.dataconvert.import_config()
+        self.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        if not self.path_file:
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            return
+
+        # self.dataconvert.import_config()
+        #crear una tarea asincrona
+        worker = Worker(self.dataconvert.import_config)
+        worker.signals.resultado.connect(self.contenedor.success_dialog)
+        worker.signals.error.connect(self.contenedor.manejar_error)
+        self.thread_pool.start(worker)
 
     def open_file_choose(self, view=True, file_path=None):
         if view: file_path, _ = QFileDialog.getOpenFileName(self, "Choose a file", "", "All files (*)")

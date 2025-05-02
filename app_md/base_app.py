@@ -387,18 +387,23 @@ class MainWindow(QMainWindow):
 
     def manejar_error(self, error_msg):
         #mostrar una ventana con el error
+        self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
+
         QApplication.restoreOverrideCursor()
         ErrorDialog(error_msg, self.icon_path).exec_()
 
     def success_dialog(self, vaule, title:str="Success"):
+        self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
+
         QApplication.restoreOverrideCursor()
+
         if 'href' not in vaule[0]:
             QMessageBox.information(self, title, vaule[0])
             return
 
-        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder)
+        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder if not isinstance(vaule[-1], Path) else vaule[-1])
         self.secundaria.exec_()
 
     def question_dialog(self, content, title:str="Warning!"):
