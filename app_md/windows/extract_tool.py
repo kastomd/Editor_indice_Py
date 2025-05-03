@@ -130,8 +130,9 @@ class ExtractTool(QDialog):
         if view: file_path, _ = QFileDialog.getOpenFileName(self, "Choose a file", "", "All files (*)")
         if file_path:
             self.path_file = Path(file_path)
-            self.drop_label.setText(f"file: {file_path}")
-            self.contenedor.success_dialog(["file opened"])
+            f_der = "folder" if self.path_file.is_dir() else "file"
+            self.drop_label.setText(f"{f_der}: {file_path}")
+            self.contenedor.success_dialog([f"{f_der} opened"])
 
     def show_extract(self):
         self.show()

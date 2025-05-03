@@ -39,8 +39,7 @@ class DataFileManager():
             b"\x00\x00\x00\x3f": {"row": 3},
             b"\x00\x00\x00\x1c": {"row": 0},
             b"\x00\x00\x00\x6d": {"row": 0},
-            b"\x64\x00\x10\x27": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"},
-            b"\x64\x00\x00\x00": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"}
+            b"\x64\x00": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"}
         }
 
 

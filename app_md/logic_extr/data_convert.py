@@ -7,7 +7,9 @@
             bytes_keys = f.read(4)
             data_file = self.content.datafilemanager.dataKey.get(bytes_keys)
             if not data_file:
-                raise ValueError("unknow file, The file key could not be identified.")
+                data_file = self.content.datafilemanager.dataKey.get(bytes_keys[:2])
+                if not data_file:
+                    raise ValueError("unknow file, The file key could not be identified.")
 
             pad_offset = data_file.get("eoinx")
             if pad_offset == None:
@@ -75,6 +77,8 @@
                 #obtener los bytes hasta cierto punto
                 terminator_index = data_bytes.find(b'\x00\x00')                                
                 if terminator_index != -1:
+                    if len(data_bytes) == 2:
+                        terminator_index = 1
                     data_bytes = data_bytes[:terminator_index+1]
 
                 #guardar el previewtxt
@@ -105,7 +109,10 @@
 
     def import_config(self):
         content_file = b''
-        name_folder = self.content.path_file.parent / self.content.path_file.stem
+        if self.content.path_file.is_dir():
+            name_folder = self.content.path_file
+        else:
+            name_folder = self.content.path_file.parent / self.content.path_file.stem
 
         self.content.datafilemanager.load_entry(path=(name_folder / "config.set"))
 
@@ -116,7 +123,8 @@
 
         keydata = bytes.fromhex(self.content.datafilemanager.entry.get("key"))
         content_file = keydata
-        self.typedata = self.content.datafilemanager.dataKey.get(keydata[:4]).get("data")
+
+        self.typedata = self.content.datafilemanager.dataKey.get(keydata[:2]).get("data")
 
         if self.typedata == "txt":
             #evita el archivo previewtxt
@@ -133,6 +141,8 @@
             content_file = self.pad_to_16(content_file)
 
         n_row = self.content.datafilemanager.dataKey.get(keydata[:4])
+        if not n_row:
+            n_row = self.content.datafilemanager.dataKey.get(keydata[:2])
         n_row = n_row.get("row")
         if n_row:
             content_file+=b'\x00'*(16*n_row)
@@ -145,10 +155,17 @@
         if name_file_compress.exists():
             raise ValueError(f"The \"{name_file_compress.name}\" file already exists and cannot be overwritten.")
         
-        name_folder = self.content.path_file.parent / self.content.path_file.stem
+        if self.content.path_file.is_dir():
+            name_folder = self.content.path_file
+        else:
+            name_folder = self.content.path_file.parent / self.content.path_file.stem
         offset = len(conten)
         # data_offsets = []
-        pos_index=self.content.datafilemanager.dataKey.get(conten[:4]).get("star")
+        dataKeys=self.content.datafilemanager.dataKey.get(conten[:4])
+        if not dataKeys:
+            dataKeys=self.content.datafilemanager.dataKey.get(conten[:2])
+
+        pos_index=dataKeys.get("star")
 
         if not pos_index:
             pos_index=4
@@ -189,8 +206,8 @@
                         decode_utf8=content_file.decode('utf-8')
                         content_file=decode_utf8.encode('utf-16-le')
 
-                    #asigna el null al final
-                    content_file+=b'\x00'*2
+                    #asigna el null al final, si no lo tiene
+                    if content_file[-2:] != b'\x00'*2 : content_file+=b'\x00'*2
 
                 #realiza el padding a los archivos
                 if self.content.ischeckbox: content_file = self.pad_to_16(content_file)
@@ -209,6 +226,7 @@
         #guarda el archivo compress_file
         
         with open(name_file_compress, "wb") as c:
+            #dar padding al archivo final
             conten=self.pad_to_16(conten)
             c.write(conten)
         
