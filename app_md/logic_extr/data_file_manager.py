@@ -41,7 +41,8 @@ class DataFileManager():
             b"\x00\x00\x00\x6d": {"row": 0},
             b"\x50\x50\x48\x44": {"row": 2, "star": 0x10, "fill":b'\xff', "ispair": False},
             b"\x64\x00": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"},
-            b"\x50\x50\x56\x41": {"star": 0x20, "data":"vag", "fill":b'\xff'}
+            b"\x50\x50\x56\x41": {"star": 0x20, "data":"vag", "fill":b'\xff'},
+            b"\x02\x00\x00\x00": {"row": 0}
         }
 
 

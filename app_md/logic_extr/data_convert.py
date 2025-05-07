@@ -1,9 +1,13 @@
 ﻿from app_md.logic_extr.vag_header import VAGHeader
+from app_md.logic_extr.ppva import PPVA
 
+import json
 
 class DataConvert():
     def __init__(self, contenedor):
         self.content=contenedor
+        self.bytes_file = None
+        self.ppva = PPVA(self.content)
 
     def load_offsets(self):
         # Leer el archivo completo en memoria
@@ -17,7 +21,8 @@ class DataConvert():
         data_file = self.content.datafilemanager.dataKey.get(bytes_keys)
 
         if bytes_keys == b'\x50\x50\x56\x41':
-            return self.ppva_extract(data_file=data_file)
+            # return self.ppva_extract(data_file=data_file)
+            return self.ppva.extract(data_file=data_file, bytes_file=self.bytes_file)
 
         # Intentar con 2 bytes si los 4 fallan
         if not data_file:
@@ -162,13 +167,17 @@ class DataConvert():
         config_path = name_folder / "config.set"
         self.content.datafilemanager.load_entry(path=config_path)
 
-        # Contar archivos en el directorio (excluyendo "config.set")
-        n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
-
         # Obtener clave de entrada
         entry = self.content.datafilemanager.entry
         key_hex = entry.get("key")
         key_data = bytes.fromhex(key_hex)
+
+        if b'\x50\x50\x56\x41' in key_data:
+            return self.ppva.compress(keydata=key_data,entry=entry,name_folder=name_folder,path_file=self.content.path_file)
+
+        # Contar archivos en el directorio (excluyendo "config.set")
+        n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
+
         content_file = bytearray(key_data)
 
         # Obtener tipo de datos si es "txt"
@@ -266,74 +275,4 @@ class DataConvert():
             padding = 16 - resto
             b += bytes.fromhex(self.content.datafilemanager.entry.get("fill") if not fill else fill) * padding
         return b
-
-    def ppva_extract(self, data_file:dict):
-        data_audio = []
-        offset_fin = self.bytes_file[4:8]
-        endian = self.content.datafilemanager.guess_endianness(offset_fin)
-        
-        if "unk" in endian:
-            raise ValueError(endian)
-
-        offset_fin = int.from_bytes(offset_fin, byteorder=endian)
-        offset_fin+=8
-
-        seek_start = data_file.get("star")
-        fill = data_file.get("fill")
-
-        # Actualizar entrada
-        self.content.datafilemanager.update_entry(
-            key_bytes=self.bytes_file[:seek_start],
-            endianness=endian,
-            pad_offset=data_file.get("eoinx", True),
-            ispair=data_file.get("ispair", True),
-            fill=fill
-        )
-
-        # leer offsets, frecuencia y long
-        while seek_start < offset_fin or seek_start < len(self.bytes_file):
-            if seek_start+16 > len(self.bytes_file):
-                break
-
-            data_audio.append([self.bytes_file[seek_start:seek_start + 4], self.bytes_file[seek_start + 4:seek_start + 8], self.bytes_file[seek_start + 8:seek_start + 12]])
-            seek_start+=16
-
-            if data_audio[-1][0] == b'\x00'*4 and data_audio[-1][1] == b'\x00'*4 and data_audio[-1][2] == b'\x00'*4:
-                data_audio.pop()
-                break
-
-        # print(data_audio)
-        content_audios = None
-        folder_path = self.content.path_file.parent
-        folder_path = folder_path.parent
-        with open(folder_path / "1-1.unk", "rb") as f:
-            content_audios = f.read()
-
-        folder_audios = self.content.path_file.parent / self.content.path_file.stem
-        folder_audios.mkdir(exist_ok=True)
-
-        # Guardar configuracion
-        with open(folder_audios / "config.set", "w") as cf:
-            cf.write(self.content.datafilemanager.data)
-
-        x = 0
-        # guardar el vag
-        for audio_inf in data_audio:
-            x+=1
-            start = int.from_bytes(audio_inf[0], byteorder=endian)
-            end = int.from_bytes(audio_inf[2], byteorder=endian) if audio_inf[2] != b'\xD0\xFF\xFF\xFF' else 0
-
-            vag_header = VAGHeader(data_size=end, sample_rate=int.from_bytes(audio_inf[1], byteorder=endian), name=f"{x}-{x:X}")
-            header_bytes = vag_header.build()
-            # header_bytes = self.pad_to_16(b=header_bytes, fill='00')
-            
-            end+=start
-            with open(folder_audios / f"{x}-{x:X}.vag", "wb") as vag:
-                content_audio = content_audios[start:end]
-                if not content_audio: content_audio = b'\x00'*0x10
-
-                vag.write(header_bytes + content_audio)
-
-        return [f"{x} VAG audio files exported"]
-
 
