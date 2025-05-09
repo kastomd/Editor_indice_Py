@@ -9,14 +9,18 @@ class PPVA:
         self.vag_header = VAGHeader()
         self.bytes_file = None
         self.wavcd = WavCd()
+        self.conten_vag_name = None
+        self.force_loop = {}
 
-    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav=False):
+    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav=False, conten_vag_name:str="1-1.unk"):
+        self.conten_vag_name = conten_vag_name
         name_file, name_vag_content = self._validate_output_files(name_folder, path_file)
         n_vag_files = self._count_vag_files(name_folder)
         data_wav_loop = self._load_wav_loop_metadata(name_folder)
 
-        self._ensure_wav_format(name_folder, n_vag_files)
-        if data_wav_loop:
+        if is_wav:
+            self._ensure_wav_format(name_folder, n_vag_files)
+        if data_wav_loop and is_wav:
             self._apply_loop_metadata(name_folder, n_vag_files, data_wav_loop)
 
         if is_wav:
@@ -28,9 +32,10 @@ class PPVA:
         ppva_file = self._build_ppva_file(keydata, entry, vag_content)
         self._save_ppva_file(name_file, ppva_file)
 
-        return [f"1-1.unk and {name_file.name} created"]
+        return [f"{self.conten_vag_name} and {name_file.name} created"]
 
-    def extract(self, data_file: dict, bytes_file: bytes):
+    def extract(self, data_file: dict, bytes_file: bytes, conten_vag_name:str="1-1.unk"):
+        self.conten_vag_name = conten_vag_name
         self.bytes_file = bytes_file
         endian = self._detect_endianness()
         offset_end, seek = self._get_table_range(data_file, endian)
@@ -54,7 +59,7 @@ class PPVA:
 
     def _validate_output_files(self, name_folder, path_file):
         name_file = name_folder.parent / f"compress_{path_file.name}"
-        name_vag_content = name_folder.parent.parent / "compress_1-1.unk"
+        name_vag_content = name_folder.parent.parent / f"compress_{self.conten_vag_name}"
         for f in (name_file, name_vag_content):
             if f.exists():
                 raise ValueError(f"The \"{f.name}\" file already exists and cannot be overwritten.")
@@ -77,6 +82,7 @@ class PPVA:
                 self.wavcd.convert_wav_to_16bit_mono(path)
 
     def _apply_loop_metadata(self, folder, count, metadata):
+        self.force_loop = {}
         for i in range(1, count + 1):
             name = f"{i}-{i:X}.vag"
             if name in metadata:
@@ -84,21 +90,33 @@ class PPVA:
                 info = metadata[name]
                 start = info.get("loop_start")
                 end = info.get("loop_end")
-                if not info.get("force_loop"):
+                force_loop = info.get("force_loop")
+                if not force_loop:
                     start = self.wavcd.time_str_to_milliseconds(start)
                     end = self.wavcd.time_str_to_milliseconds(end)
                     self.wavcd.add_loop_metadata_to_wav(path, start, end)
+                else:
+                    self.force_loop[path.name] = force_loop
 
     def _convert_wav_to_vag(self, folder, count):
         for i in range(1, count + 1):
+            no_force_loop = False
+            force_loop = False
             path = folder / f"{i}-{i:X}.wav"
             if path.exists():
-                self.vag_header.convert_wav_to_vag(path)
+                loop = self.force_loop.get(path.name)
+                if loop == "-L":
+                    force_loop = True
+                elif loop == "-1":
+                    no_force_loop = True
+
+                self.vag_header.convert_wav_to_vag(wav_path=path,force_loop=force_loop,no_force_loop=no_force_loop)
 
     def _build_vag_content(self, folder, count):
         content_file = b''
         vag_content = []
         frecuencia = None
+        e_re = b'\x00\x07' + (b'\x77' * 0xe)
 
         for i in range(1, count + 1):
             with open(folder / f"{i}-{i:X}.vag", "rb") as f:
@@ -108,6 +126,8 @@ class PPVA:
                 data = f.read()
                 if all(b == 0 for b in data):
                     data = b''
+                if data and data[-16:] != e_re:
+                    data += e_re
                 vag_content.append([len(content_file), frecuencia, len(data)])
                 content_file += data
         return content_file, vag_content, frecuencia
@@ -170,7 +190,7 @@ class PPVA:
         return entries
 
     def _load_container_data(self):
-        path = self.content.path_file.parent.parent / "1-1.unk"
+        path = self.content.path_file.parent.parent / self.conten_vag_name
         if not path.exists():
             raise ValueError(f"Missing container file: {path}")
         return path.read_bytes()
