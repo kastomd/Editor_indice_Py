@@ -45,7 +45,7 @@ class BaseApp:
         # Cargar imagen del splash
         splash_pix = QPixmap(str(Path(__file__).resolve().parent / "images" / "splash.png"))
         self.splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-        self.splash.showMessage("Cargando...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
+        self.splash.showMessage("Loading...", Qt.AlignBottom | Qt.AlignCenter, Qt.white)
         self.splash.show()
 
         # Esperar y luego lanzar la ventana principal
@@ -222,9 +222,6 @@ class MainWindow(QMainWindow):
             self.manejar_error("Only one file is allowed.")
             return  # Ignora si hay mas de uno
 
-        #confirmacion para cargar el path
-        if self.question_dialog("are you sure you want open iso file?") == QMessageBox.Cancel:
-            return
 
         filepath = urls[0].toLocalFile()
         #confirmacion para abrir el iso
@@ -234,7 +231,7 @@ class MainWindow(QMainWindow):
             self.contenedor.open_iso(file_path=filepath)
 
     def closeEvent(self, event):
-        reply = self.question_dialog(content="Are you sure you want to close the application?", title="Confirm exit")
+        reply = self.question_dialog(content="Are you sure you want to close the Editor application?", title="Confirm exit")
 
         if reply == QMessageBox.Ok:
             event.accept()
@@ -387,18 +384,23 @@ class MainWindow(QMainWindow):
 
     def manejar_error(self, error_msg):
         #mostrar una ventana con el error
+        self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
+
         QApplication.restoreOverrideCursor()
         ErrorDialog(error_msg, self.icon_path).exec_()
 
     def success_dialog(self, vaule, title:str="Success"):
+        self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
+
         QApplication.restoreOverrideCursor()
+
         if 'href' not in vaule[0]:
             QMessageBox.information(self, title, vaule[0])
             return
 
-        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder)
+        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder if not isinstance(vaule[-1], Path) else vaule[-1])
         self.secundaria.exec_()
 
     def question_dialog(self, content, title:str="Warning!"):
