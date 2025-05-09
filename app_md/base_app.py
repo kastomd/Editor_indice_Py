@@ -222,9 +222,6 @@ class MainWindow(QMainWindow):
             self.manejar_error("Only one file is allowed.")
             return  # Ignora si hay mas de uno
 
-        #confirmacion para cargar el path
-        if self.question_dialog("are you sure you want open iso file?") == QMessageBox.Cancel:
-            return
 
         filepath = urls[0].toLocalFile()
         #confirmacion para abrir el iso

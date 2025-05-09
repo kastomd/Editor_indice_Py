@@ -7,7 +7,7 @@ import os
 import re
 
 class VAGHeader:
-    def __init__(self, data_size:int, sample_rate=int, name=str):
+    def __init__(self, data_size:int=0, sample_rate:int=0, name:str=""):
         """
         Crea un header VAGp.
 
@@ -84,14 +84,24 @@ class VAGHeader:
         
         return f"Success: {wav_path.name}"
 
-    def convert_wav_to_vag(self, wav_path: Path, loop=False):
+    def convert_wav_to_vag(self, wav_path: Path, force_loop=False, no_force_loop=False):
         if not wav_path.is_file():
             raise FileNotFoundError(f"WAV file not found: {wav_path}")
 
-        exe_path = self._get_resources_path(Path("tools/AIFF2VAG/AIFF2VAG.exe"))
-        command = [str(exe_path), str(wav_path), "-L" if loop else "-1"] # -L fuerza a looping, -1 no looping
+        loop = ""
+        if force_loop:
+            loop = "-L"
 
-        result = self._run_subprocess(command)
+        if no_force_loop:
+            loop = "-1"
+
+        exe_path = self._get_resources_path(Path("tools/AIFF2VAG/AIFF2VAG.exe"))
+        command = [str(exe_path), str(wav_path)] 
+
+        if loop != "":
+            command.append(loop) # -L fuerza a looping, -1 no looping, "" smpl del wav
+
+        result = self._run_subprocess(command) 
 
         if result.returncode != 0:
             raise ValueError(f"Error converting \"{wav_path.name}\":\n{result.stderr}")
@@ -117,6 +127,7 @@ class VAGHeader:
             "loop_start": None,
             "loop_end": None,
             "duration": None,
+            "force_loop": "",
             "encoding": None
         }
 

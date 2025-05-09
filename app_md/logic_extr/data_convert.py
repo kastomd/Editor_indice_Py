@@ -173,7 +173,7 @@ class DataConvert():
         key_data = bytes.fromhex(key_hex)
 
         if b'\x50\x50\x56\x41' in key_data:
-            return self.ppva.compress(keydata=key_data,entry=entry,name_folder=name_folder,path_file=self.content.path_file)
+            return self.ppva.compress(keydata=key_data,entry=entry,name_folder=name_folder,path_file=self.content.path_file,is_wav=True)
 
         # Contar archivos en el directorio (excluyendo "config.set")
         n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
@@ -261,7 +261,7 @@ class DataConvert():
             if idx < n_files if not ispair else idx <= n_files:
                 conten = conten[:pos_index] + offset.to_bytes(4, byteorder=endian) + conten[pos_index+4:]
 
-        conten = self.pad_to_16(conten)
+        conten = self.pad_to_16(conten, '00')
 
         with open(output_path, "wb") as out_file:
             out_file.write(conten)
@@ -269,7 +269,7 @@ class DataConvert():
         return [f"Compress file created.\n\nName file: {output_path.name}"]
 
 
-    def pad_to_16(self, b: bytes, fill: None) -> bytes:
+    def pad_to_16(self, b: bytes, fill= None) -> bytes:
         resto = len(b) % 16
         if resto != 0:
             padding = 16 - resto

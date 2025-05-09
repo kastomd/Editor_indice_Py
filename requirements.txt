@@ -1,3 +1,4 @@
 ﻿pycdlib
 PyQt5
 qdarkstyle
+soundfile

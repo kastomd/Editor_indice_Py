@@ -1,167 +1,215 @@
 ﻿import json
 from pathlib import Path
 from app_md.logic_extr.vag_header import VAGHeader
+from app_md.wav.wav_cd import WavCd
 
 class PPVA:
     def __init__(self, content):
-        self.content = content  # Objeto que contiene path_file y datafilemanager
-        self.vag_header = None  # Se inicializa por cada archivo VAG
+        self.content = content
+        self.vag_header = VAGHeader()
         self.bytes_file = None
+        self.wavcd = WavCd()
 
-    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, to_wav = False):
-        name_file = name_folder.parent / f"compress_{path_file.name}"
-        if name_file.exists():
-            raise ValueError(f"The \"{name_file.name}\" file already exists and cannot be overwritten.")
+    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav=False):
+        name_file, name_vag_content = self._validate_output_files(name_folder, path_file)
+        n_vag_files = self._count_vag_files(name_folder)
+        data_wav_loop = self._load_wav_loop_metadata(name_folder)
 
-        name_vag_content = name_folder.parent.parent / "compress_1-1.unk"
-        if name_vag_content.exists():
-            raise ValueError(f"The \"{name_vag_content.name}\" file already exists and cannot be overwritten.")
+        self._ensure_wav_format(name_folder, n_vag_files)
+        if data_wav_loop:
+            self._apply_loop_metadata(name_folder, n_vag_files, data_wav_loop)
 
-        ppva_file = keydata
-        content_file = b''
+        if is_wav:
+            self._convert_wav_to_vag(name_folder, n_vag_files)
 
-        # Contar archivos .vag
-        n_vag_files = sum(
-            1 for f in name_folder.iterdir()
-            if f.is_file() and f.suffix == '.vag'
-        )
-        # self.vag_header.convert_wav_to_vag(folder_audios / "1-1.wav", loop=True)
-        frecuencia = None
-        vag_content = []
-        for x in range(1, n_vag_files+1):
-            #obtener los parametros del audio
-            with open(name_folder / f"{x}-{x:X}.vag", "rb") as vag:
-                vag.seek(0x10)
-                frecuencia = int.from_bytes(vag.read(4), byteorder='big')
-                vag.seek(0x30)
-                vag_data = vag.read()
-                
-                #si es un audio vacio
-                if all(b == 0 for b in vag_data):
-                    vag_data=b''
+        content_file, vag_content, frecuencia = self._build_vag_content(name_folder, n_vag_files)
+        self._write_unk_file(name_vag_content, content_file)
 
-                vag_content.append([len(content_file), frecuencia, len(vag_data)])
-                content_file += vag_data
+        ppva_file = self._build_ppva_file(keydata, entry, vag_content)
+        self._save_ppva_file(name_file, ppva_file)
 
-        # guarda el 1-1.unk
-        with open(name_vag_content, "wb") as vag_ct:
-            content_file+=b'\x00'*0x30
-            vag_ct.write(content_file)
-        
-        # rellena los parametros del audio
-        ppva_file += bytes.fromhex(entry.get("fill", '00')) * (n_vag_files * 0x10)
-        seek_start = self.content.datafilemanager.dataKey.get(keydata[:4]).get("star")
-        endian = entry.get("endianness")
-        
-        # modifica para del offset 0x4
-        ppva_file = ppva_file[:4] + len(ppva_file[8:]).to_bytes(4, byteorder=endian) + ppva_file[8:]
-
-        for data_audio in vag_content:
-            if data_audio[2] == 0: data_audio[2] = 0xFFFFFFD0
-
-            ppva_file = ppva_file[:seek_start] + data_audio[0].to_bytes(4, byteorder=endian) + data_audio[1].to_bytes(4, byteorder=endian) + data_audio[2].to_bytes(4, byteorder=endian) + ppva_file[seek_start + 0xc:]
-            
-            seek_start+=0x10
-
-        # guardar el ppva
-        with open(name_file, "wb") as f:
-            f.write(ppva_file)
-
-        return [f"1-1.unk y {name_file.name} creados"]
+        return [f"1-1.unk and {name_file.name} created"]
 
     def extract(self, data_file: dict, bytes_file: bytes):
         self.bytes_file = bytes_file
-        audio_entries = []
+        endian = self._detect_endianness()
+        offset_end, seek = self._get_table_range(data_file, endian)
 
-        # Determinar orden de bytes (endianness)
-        offset_bytes = self.bytes_file[4:8]
-        endian = self.content.datafilemanager.guess_endianness(offset_bytes)
+        self._update_entry(data_file, seek, endian)
+        audio_entries = self._read_audio_entries(seek, offset_end, endian)
 
+        container_data = self._load_container_data()
+        output_dir = self._prepare_output_folder()
+
+        self._save_config(output_dir)
+        exported_files = self._extract_vag_files(audio_entries, container_data, output_dir, endian)
+        self._convert_all_to_wav(exported_files, output_dir)
+        self._write_metadata(exported_files, output_dir)
+
+        return [f"{len(exported_files)} VAG audio files exported"]
+
+    # -----------------------
+    # Metodos auxiliares
+    # -----------------------
+
+    def _validate_output_files(self, name_folder, path_file):
+        name_file = name_folder.parent / f"compress_{path_file.name}"
+        name_vag_content = name_folder.parent.parent / "compress_1-1.unk"
+        for f in (name_file, name_vag_content):
+            if f.exists():
+                raise ValueError(f"The \"{f.name}\" file already exists and cannot be overwritten.")
+        return name_file, name_vag_content
+
+    def _count_vag_files(self, folder):
+        return sum(1 for f in folder.iterdir() if f.is_file() and f.suffix == '.vag')
+
+    def _load_wav_loop_metadata(self, folder):
+        metadata_path = folder / "metadato_for_wav.json"
+        if metadata_path.exists():
+            with open(metadata_path, "r") as f:
+                return json.load(f)
+        return None
+
+    def _ensure_wav_format(self, folder, count):
+        for i in range(1, count + 1):
+            path = folder / f"{i}-{i:X}.wav"
+            if not self.wavcd.validar_wav_mono_16bit_pcm(path):
+                self.wavcd.convert_wav_to_16bit_mono(path)
+
+    def _apply_loop_metadata(self, folder, count, metadata):
+        for i in range(1, count + 1):
+            name = f"{i}-{i:X}.vag"
+            if name in metadata:
+                path = folder / f"{i}-{i:X}.wav"
+                info = metadata[name]
+                start = info.get("loop_start")
+                end = info.get("loop_end")
+                if not info.get("force_loop"):
+                    start = self.wavcd.time_str_to_milliseconds(start)
+                    end = self.wavcd.time_str_to_milliseconds(end)
+                    self.wavcd.add_loop_metadata_to_wav(path, start, end)
+
+    def _convert_wav_to_vag(self, folder, count):
+        for i in range(1, count + 1):
+            path = folder / f"{i}-{i:X}.wav"
+            if path.exists():
+                self.vag_header.convert_wav_to_vag(path)
+
+    def _build_vag_content(self, folder, count):
+        content_file = b''
+        vag_content = []
+        frecuencia = None
+
+        for i in range(1, count + 1):
+            with open(folder / f"{i}-{i:X}.vag", "rb") as f:
+                f.seek(0x10)
+                frecuencia = int.from_bytes(f.read(4), 'big')
+                f.seek(0x30)
+                data = f.read()
+                if all(b == 0 for b in data):
+                    data = b''
+                vag_content.append([len(content_file), frecuencia, len(data)])
+                content_file += data
+        return content_file, vag_content, frecuencia
+
+    def _write_unk_file(self, path, content):
+        with open(path, "wb") as f:
+            f.write(content + b'\x00' * 0x30)
+
+    def _build_ppva_file(self, keydata, entry, vag_data):
+        fill = bytes.fromhex(entry.get("fill", '00'))
+        endian = entry.get("endianness")
+        seek_start = self.content.datafilemanager.dataKey[keydata[:4]]["star"]
+
+        ppva = keydata + fill * (len(vag_data) * 0x10)
+        ppva = ppva[:4] + len(ppva[8:]).to_bytes(4, endian) + ppva[8:]
+
+        for offset, freq, length in vag_data:
+            length = length or 0xFFFFFFD0
+            chunk = offset.to_bytes(4, endian) + freq.to_bytes(4, endian) + length.to_bytes(4, endian)
+            ppva = ppva[:seek_start] + chunk + ppva[seek_start + 0xC:]
+            seek_start += 0x10
+        return ppva
+
+    def _save_ppva_file(self, path, data):
+        with open(path, "wb") as f:
+            f.write(data)
+
+    def _detect_endianness(self):
+        endian = self.content.datafilemanager.guess_endianness(self.bytes_file[4:8])
         if "unk" in endian:
             raise ValueError(endian)
+        return endian
 
-        # Calcular el final de la tabla de entradas
-        offset_end = int.from_bytes(offset_bytes, byteorder=endian) + 8
-
-        # Obtener posicion inicial de lectura
+    def _get_table_range(self, data_file, endian):
+        offset_end = int.from_bytes(self.bytes_file[4:8], endian) + 8
         seek = data_file.get("star")
-        fill_value = data_file.get("fill")
+        return offset_end, seek
 
-        # Actualizar entrada en el datafile
+    def _update_entry(self, data_file, seek, endian):
         self.content.datafilemanager.update_entry(
             key_bytes=self.bytes_file[:seek],
             endianness=endian,
             pad_offset=data_file.get("eoinx", True),
             ispair=data_file.get("ispair", True),
-            fill=fill_value
+            fill=data_file.get("fill")
         )
 
-        # Leer entradas de audio (offset, frecuencia, longitud)
+    def _read_audio_entries(self, seek, offset_end, endian):
+        entries = []
         while seek < offset_end and seek + 16 <= len(self.bytes_file):
-            offset = self.bytes_file[seek:seek + 4]
-            freq = self.bytes_file[seek + 4:seek + 8]
-            length = self.bytes_file[seek + 8:seek + 12]
-            seek += 16
-
-            if offset + freq + length == b'\x00' * 12:
+            chunk = self.bytes_file[seek:seek + 12]
+            if chunk == b'\x00' * 12:
                 break
+            entries.append((
+                chunk[0:4],
+                chunk[4:8],
+                chunk[8:12]
+            ))
+            seek += 16
+        return entries
 
-            audio_entries.append((offset, freq, length))
+    def _load_container_data(self):
+        path = self.content.path_file.parent.parent / "1-1.unk"
+        if not path.exists():
+            raise ValueError(f"Missing container file: {path}")
+        return path.read_bytes()
 
-        # Leer archivo contenedor con los datos de audio
-        container_path = self.content.path_file.parent.parent / "1-1.unk"
-        if not container_path.exists():
-            raise ValueError(f"Missing container file: {container_path}")
+    def _prepare_output_folder(self):
+        out_dir = self.content.path_file.parent / self.content.path_file.stem
+        if out_dir.exists():
+            raise ValueError(f"Folder \"{out_dir.name}\" already exists.")
+        out_dir.mkdir()
+        return out_dir
 
-        with open(container_path, "rb") as f:
-            container_data = f.read()
+    def _save_config(self, folder):
+        with open(folder / "config.set", "w") as f:
+            f.write(self.content.datafilemanager.data)
 
-        # Crear carpeta de salida
-        output_dir = self.content.path_file.parent / self.content.path_file.stem
-        if output_dir.is_dir():
-            raise ValueError(f"Folder \"{output_dir.name}\" already exists.")
-        output_dir.mkdir(exist_ok=True)
-
-        # Guardar configuracion original
-        with open(output_dir / "config.set", "w") as config_file:
-            config_file.write(self.content.datafilemanager.data)
-
-        exported_files = []
-
-        # Extraer y guardar cada archivo VAG
-        for index, (raw_start, raw_freq, raw_end) in enumerate(audio_entries, start=1):
-            start = int.from_bytes(raw_start, byteorder=endian)
-            freq = int.from_bytes(raw_freq, byteorder=endian)
-            end = int.from_bytes(raw_end, byteorder=endian) if raw_end != b'\xD0\xFF\xFF\xFF' else 0
+    def _extract_vag_files(self, entries, container_data, folder, endian):
+        files = []
+        for i, (raw_off, raw_freq, raw_len) in enumerate(entries, 1):
+            start = int.from_bytes(raw_off, endian) if raw_off != b'\xFF\xFF\xFF\xFF' else 0
+            freq = int.from_bytes(raw_freq, endian) if raw_freq != b'\xFF\xFF\xFF\xFF' else 0
+            end = int.from_bytes(raw_len, endian) if raw_len not in [b'\xD0\xFF\xFF\xFF', b'\xFF\xFF\xFF\xFF'] else 0
             end += start
 
-            self.vag_header = VAGHeader(
-                data_size=end - start,
-                sample_rate=freq,
-                name=f"{index}-{index:X}"
-            )
-            header_bytes = self.vag_header.build()
+            self.vag_header = VAGHeader(end - start, freq, f"{i}-{i:X}")
+            out_file = folder / f"{i}-{i:X}.vag"
+            data = container_data[start:end] or b'\x00' * 0x10
+            out_file.write_bytes(self.vag_header.build() + data)
+            files.append(out_file)
+        return files
 
-            vag_file = output_dir / f"{index}-{index:X}.vag"
-            exported_files.append(vag_file)
+    def _convert_all_to_wav(self, files, folder):
+        for f in files:
+            self.vag_header.convert_vag_to_wav(f, folder / f"{f.stem}.wav")
 
-            audio_data = container_data[start:end] or b'\x00' * 0x10
-            with open(vag_file, "wb") as out_vag:
-                out_vag.write(header_bytes + audio_data)
-
-        # Convertir cada VAG a WAV
-        for vag_file in exported_files:
-            wav_file = output_dir / f"{vag_file.stem}.wav"
-            self.vag_header.convert_vag_to_wav(vag_file, wav_file)
-
-        # Guardar metadatos por archivo
+    def _write_metadata(self, files, folder):
         metadata = {}
-        for vag_file in exported_files:
-            info = self.vag_header.get_audio_info(vag_file,False)
+        for f in files:
+            info = self.vag_header.get_audio_info(f, False)
             if info:
-                metadata[vag_file.name] = info
-
-        with open(output_dir / "metadato_for_wav.json", "w") as meta_file:
-            json.dump(metadata, meta_file, indent=4)
-
-        return [f"{len(exported_files)} VAG audio files exported"]
+                metadata[f.name] = info
+        with open(folder / "metadato_for_wav.json", "w") as f:
+            json.dump(metadata, f, indent=4)
