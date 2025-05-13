@@ -1,4 +1,5 @@
 ﻿import json
+import os
 from pathlib import Path
 from app_md.logic_extr.vag_header import VAGHeader
 from app_md.wav.wav_cd import WavCd
@@ -12,7 +13,7 @@ class PPVA:
         self.conten_vag_name = None
         self.force_loop = {}
 
-    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav=False, conten_vag_name:str="1-1.unk"):
+    def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav:bool=False, conten_vag_name:str="1-1.unk"):
         self.conten_vag_name = conten_vag_name
         name_file, name_vag_content = self._validate_output_files(name_folder, path_file)
         n_vag_files = self._count_vag_files(name_folder)
@@ -27,14 +28,34 @@ class PPVA:
             self._convert_wav_to_vag(name_folder, n_vag_files)
 
         content_file, vag_content, frecuencia = self._build_vag_content(name_folder, n_vag_files)
-        self._write_unk_file(name_vag_content, content_file)
+        
+        subdirec = {}
+        if self.content.ischeckbox_subdirec:
+            self._write_unk_file(name_vag_content, content_file)
+        else:
+            # guardar en temp contenedor de audios
+            name_vag_content =  name_folder.parent.parent / self.conten_vag_name
+            self._write_unk_file(name_vag_content, content_file)
+            print(name_vag_content)
+            subdirec[name_vag_content] = True
 
         ppva_file = self._build_ppva_file(keydata, entry, vag_content)
-        self._save_ppva_file(name_file, ppva_file)
+        if self.content.ischeckbox_subdirec:
+            #guarda en la raiz del path
+            self._save_ppva_file(name_file, ppva_file)
 
-        return [f"{self.conten_vag_name} and {name_file.name} created"]
+            return [f"{self.conten_vag_name} and {name_file.name} created"]
+        else:
+            # guardar en temp
+            name_file =  name_folder.parent / path_file.name
+            self._save_ppva_file(name_file, ppva_file)
+            print(name_file)
+            subdirec[name_file] = True
 
-    def extract(self, data_file: dict, bytes_file: bytes, conten_vag_name:str="1-1.unk"):
+            # confirmacion de archivo guardado o modificado
+            return subdirec
+
+    def extract(self, data_file: dict, bytes_file: bytes, conten_vag_name:str="1-1.unk", is_wav:bool=False):
         self.conten_vag_name = conten_vag_name
         self.bytes_file = bytes_file
         endian = self._detect_endianness()
@@ -48,7 +69,8 @@ class PPVA:
 
         self._save_config(output_dir)
         exported_files = self._extract_vag_files(audio_entries, container_data, output_dir, endian)
-        self._convert_all_to_wav(exported_files, output_dir)
+        if is_wav:
+            self._convert_all_to_wav(exported_files, output_dir)
         self._write_metadata(exported_files, output_dir)
 
         return [f"{len(exported_files)} VAG audio files exported"]
@@ -126,8 +148,8 @@ class PPVA:
                 data = f.read()
                 if all(b == 0 for b in data):
                     data = b''
-                if data and data[-16:] != e_re:
-                    data += e_re
+                # if data and data[-16:] != e_re: audio con looparrojo error en su reproduccion en game
+                #     data += e_re
                 vag_content.append([len(content_file), frecuencia, len(data)])
                 content_file += data
         return content_file, vag_content, frecuencia
@@ -143,9 +165,13 @@ class PPVA:
 
         ppva = keydata + fill * (len(vag_data) * 0x10)
         ppva = ppva[:4] + len(ppva[8:]).to_bytes(4, endian) + ppva[8:]
-
+                
         for offset, freq, length in vag_data:
             length = length or 0xFFFFFFD0
+            if self.content.ischeckbox_narut and length == 0xFFFFFFD0:
+                offset = 0xFFFFFFFF
+                length = offset
+                freq = offset
             chunk = offset.to_bytes(4, endian) + freq.to_bytes(4, endian) + length.to_bytes(4, endian)
             ppva = ppva[:seek_start] + chunk + ppva[seek_start + 0xC:]
             seek_start += 0x10

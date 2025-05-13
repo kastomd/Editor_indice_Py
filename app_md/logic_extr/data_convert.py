@@ -1,7 +1,8 @@
-﻿from app_md.logic_extr.vag_header import VAGHeader
+﻿# from app_md.logic_extr.vag_header import VAGHeader
+import os
 from app_md.logic_extr.ppva import PPVA
 
-import json
+# import json
 
 class DataConvert():
     def __init__(self, contenedor):
@@ -22,7 +23,7 @@ class DataConvert():
 
         if bytes_keys == b'\x50\x50\x56\x41':
             # return self.ppva_extract(data_file=data_file)
-            return self.ppva.extract(data_file=data_file, bytes_file=self.bytes_file)
+            return self.ppva.extract(data_file=data_file, bytes_file=self.bytes_file, is_wav=self.content.ischeckbox_wav)
 
         # Intentar con 2 bytes si los 4 fallan
         if not data_file:
@@ -172,11 +173,21 @@ class DataConvert():
         key_hex = entry.get("key")
         key_data = bytes.fromhex(key_hex)
 
-        if b'\x50\x50\x56\x41' in key_data:
-            return self.ppva.compress(keydata=key_data,entry=entry,name_folder=name_folder,path_file=self.content.path_file,is_wav=True)
+        if b'\x50\x50\x56\x41' in key_data:# extraccion del PPVA
+            vag_content = "1-1.unk"
+            if self.content.ischeckbox_narut:
+                vag_content = "3-3.unk"
+            return self.ppva.compress(
+                keydata=key_data,
+                entry=entry,
+                name_folder=name_folder,
+                path_file=self.content.path_file,
+                is_wav=self.content.ischeckbox_wav,
+                conten_vag_name=vag_content)
 
         # Contar archivos en el directorio (excluyendo "config.set")
-        n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
+        # n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
+        n_files = sum(1 for f in name_folder.iterdir() if f.is_file() and f.suffix == '.unk')
 
         content_file = bytearray(key_data)
 
@@ -185,10 +196,10 @@ class DataConvert():
         self.typedata = data_key_info.get("data") if data_key_info else None
 
         # Excluir preview_txts.txt si es tipo texto
-        if self.typedata == "txt":
-            n_files -= 1
+        # if self.typedata == "txt":
+        #     n_files -= 1
 
-        # Tamano del bloque de indices
+        # size del bloque de indices
         ispair = entry.get("ispair")
         size_indexs = 8 + (n_files - 1) * 4 if ispair else n_files * 4
 
@@ -200,7 +211,7 @@ class DataConvert():
         if entry.get("pad_offset"):
             content_file = self.pad_to_16(content_file)
 
-        # Anadir padding por filas si es necesario
+        # agruegar padding por filas si es necesario
         key_lookup = self.content.datafilemanager.dataKey
         row_info = key_lookup.get(key_data[:4]) or key_lookup.get(key_data[:2])
         row_count = row_info.get("row") if row_info else 0
@@ -251,7 +262,7 @@ class DataConvert():
                 if file_data[-2:] != b'\x00\x00':
                     file_data += b'\x00\x00'
 
-            if self.content.ischeckbox:
+            if self.content.ischeckbox and not self.typedata == "txt":
                 file_data = self.pad_to_16(file_data)
 
             conten += file_data
@@ -263,10 +274,19 @@ class DataConvert():
 
         conten = self.pad_to_16(conten, '00')
 
-        with open(output_path, "wb") as out_file:
-            out_file.write(conten)
+        if self.content.ischeckbox_subdirec:
+            # guarda en la ruta raiz
+            with open(output_path, "wb") as out_file:
+                out_file.write(conten)
 
-        return [f"Compress file created.\n\nName file: {output_path.name}"]
+            return [f"Compress file created.\n\nName file: {output_path.name}"]
+        else:
+            # guarda en temp
+            with open(self.content.path_file, "wb") as out_file:
+                print(self.content.path_file)
+                out_file.write(conten)
+            # confirmacion de archivo guardado o modificado
+            return {self.content.path_file : True}
 
 
     def pad_to_16(self, b: bytes, fill= None) -> bytes:
