@@ -27,6 +27,7 @@ class DataFileManager():
 
     def save_files(self):
         res = 'export_task finished <a href="#">open folder</a>'
+        xDat = 0
 
         #leer y guardar los archivos
         with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
@@ -34,13 +35,39 @@ class DataFileManager():
                 offset = int(dat_file[1], 16)
                 size = int(dat_file[2], 16)
                 f_iso.seek(offset)
-                dat_bytes = f_iso.read(size)
+
+                try:
+                    # Determina si hay un siguiente indice valido para evitar archivos incompletos
+                    if xDat + 1 <= self.contenedor.indexs[-1][0] - 1:
+                        next_data = self.contenedor.indexs[xDat + 1]
+                        next_offset = int(next_data[1], 16)
+
+                        # Verifica si hay datos adicionales entre el final del chunk actual y el inicio del siguiente
+                        if next_offset > offset + size:
+                            chunk_size = next_offset - offset
+                            dat_bytes = f_iso.read(chunk_size)
+
+                            # Verifica si el exceso de datos es solo padding
+                            padding = dat_bytes[size:]
+                            if all(b == 0 for b in padding):
+                                dat_bytes = dat_bytes[:size]
+                        else:
+                            dat_bytes = f_iso.read(size)
+                    else:
+                        dat_bytes = f_iso.read(size)
+
+                except Exception:
+                    # En caso de error, vuelve al offset y lee el size estandar
+                    f_iso.seek(offset)
+                    dat_bytes = f_iso.read(size)
 
                 name_file = f"{int(dat_file[0], 16)}_{dat_file[0]}.unk"
                 path_file = self.contenedor.new_folder / name_file
 
                 with open(path_file, "wb") as f_out:
                     f_out.write(dat_bytes)
+
+                xDat+=1
 
             # Verificar si existe "leftover"
             ulOffset = f_iso.tell()
@@ -71,7 +98,7 @@ class DataFileManager():
         size_indexs = (num_files + 1) * 0x10
         data_start = self.contenedor.index_Packfile[0] + size_indexs
 
-        with open(self.contenedor.contenedor.path_iso + ".compress", "wb") as f_iso_c:
+        with open(self.contenedor.contenedor.path_iso.parent / f"compress_{self.contenedor.contenedor.path_iso.name}", "wb") as f_iso_c:
             with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
                 dex_len = int(self.contenedor.edit_lbl_data_size.text(), 16) - size_indexs
                 dex = b'\x00' * dex_len #relleno o padding antes del contenido de los arrchivos

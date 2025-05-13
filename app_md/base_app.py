@@ -133,7 +133,7 @@ class BaseApp:
 
         # Si se obtuvo un archivo valido (arrastrado o desde dialogo)
         if file_path:
-            self.path_iso = file_path
+            self.path_iso = Path(file_path)
             self.window.label.setPlainText(file_path)
             self.window.success_dialog(vaule=["File loaded"])
 
@@ -352,8 +352,8 @@ class MainWindow(QMainWindow):
             self.manejar_error(f"The folder \"{self.new_folder.name}\" does not exist in the file path.")
             return
 
-        if QFile.exists(self.contenedor.path_iso+".compress"):
-            respuesta = self.question_dialog("The iso.compress exists; its file will be deleted.")
+        if QFile.exists(str(self.contenedor.path_iso.parent / f"compress_{self.contenedor.path_iso.name}")):
+            respuesta = self.question_dialog("The iso compress exists; its file will be deleted.")
             # respuesta = QMessageBox.question(
             #                 self,
             #                 "Warning!",
