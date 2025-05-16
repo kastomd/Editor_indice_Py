@@ -97,7 +97,7 @@ class WavCd():
             f.write(new_data)
 
 
-    def validar_wav_mono_16bit_pcm(self, wav_path: Path) -> bool:
+    def validar_wav_16bit_pcm(self, wav_path: Path, channels:int=1) -> bool:
         if not wav_path.exists():
             raise FileNotFoundError(f"File not found: {wav_path}")
 
@@ -106,7 +106,7 @@ class WavCd():
             sampwidth = wf.getsampwidth()
             comptype = wf.getcomptype()  # 'NONE' indica PCM sin compresion
 
-        return n_channels == 1 and sampwidth == 2 and comptype == 'NONE'
+        return n_channels == channels and sampwidth == 2 and comptype == 'NONE'
 
     def time_str_to_milliseconds(self, time_str: str) -> int:
         # transforma el string "m:s.ms" a milisegundo
@@ -116,21 +116,29 @@ class WavCd():
         return total_ms
 
     
-    def convert_wav_to_16bit_mono(self, wav_path: Path):
+    def convert_wav_to_16bit(self, wav_path: Path, to_mono: bool = True):
         if not wav_path.exists():
             raise FileNotFoundError(f"File not found: {wav_path}")
 
         data, samplerate = sf.read(wav_path)
-    
-        # Convertir a mono si es necesario
-        if len(data.shape) > 1 and data.shape[1] > 1:
-            data = data.mean(axis=1)
 
-        # Convertir a 16 bits PCM si es necesario
+        # Si se desea mono
+        if to_mono:
+            if len(data.shape) > 1 and data.shape[1] > 1:
+                # Convertir estereo a mono por promedio de canales
+                data = data.mean(axis=1)
+            # Si ya es mono, no se hace nada
+        else:
+            # Convertir mono a estereo si es necesario
+            if len(data.shape) == 1:
+                data = np.stack((data, data), axis=1)
+
+        # Asegurar tipo int16
         if data.dtype != np.int16:
+            data = np.clip(data, -1.0, 1.0)  # Limitar para evitar desbordes
             data = (data * 32767).astype(np.int16)
 
-        # Guardar siempre como PCM_16 mono
+        # Guardar como PCM_16 (respeta canales actuales)
         sf.write(wav_path, data, samplerate, subtype='PCM_16')
 
         return True

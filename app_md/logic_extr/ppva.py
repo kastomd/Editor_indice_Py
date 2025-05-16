@@ -100,8 +100,8 @@ class PPVA:
     def _ensure_wav_format(self, folder, count):
         for i in range(1, count + 1):
             path = folder / f"{i}-{i:X}.wav"
-            if not self.wavcd.validar_wav_mono_16bit_pcm(path):
-                self.wavcd.convert_wav_to_16bit_mono(path)
+            if not self.wavcd.validar_wav_16bit_pcm(path):
+                self.wavcd.convert_wav_to_16bit(path)
 
     def _apply_loop_metadata(self, folder, count, metadata):
         self.force_loop = {}

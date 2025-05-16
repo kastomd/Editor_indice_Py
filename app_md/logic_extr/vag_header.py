@@ -7,7 +7,7 @@ import os
 import re
 
 class VAGHeader:
-    def __init__(self, data_size:int=0, sample_rate:int=0, name:str=""):
+    def __init__(self, data_size:int=0, sample_rate:int=0, name:str="1"):
         """
         Crea un header VAGp.
 
@@ -67,11 +67,11 @@ class VAGHeader:
             creationflags=creation_flags
         )
 
-    def convert_vag_to_wav(self, vag_path: Path, wav_path: Path):
+    def convert_vag_to_wav(self, vag_path: Path, wav_path: Path, is_vag:bool=True):
         if not vag_path.is_file():
             raise FileNotFoundError(f"VAG file not found: {vag_path}")
 
-        if not self._is_valid_vag(vag_path):
+        if is_vag and not self._is_valid_vag(vag_path):
             return f"file not converted: {vag_path.name}"
 
         exe_path = self._get_resources_path(Path("tools/vgmstream/vgmstream-cli.exe"))

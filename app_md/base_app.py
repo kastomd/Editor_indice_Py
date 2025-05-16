@@ -4,7 +4,7 @@ import traceback
 import qdarkstyle
 
 
-from PyQt5.QtWidgets import QAction, QApplication, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
 from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QKeySequence, QPixmap
 from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
@@ -163,7 +163,7 @@ class MainWindow(QMainWindow):
         self.thread_pool = QThreadPool()
 
         self.setWindowTitle(f"Editor indice tag team - v:{self.version}")
-        self.setFixedSize(550, 255)
+        self.setFixedSize(550, 280)
         self.setWindowIcon(QIcon(str(self.icon_path)))
 
         #acepta drop
@@ -194,6 +194,12 @@ class MainWindow(QMainWindow):
         self.label.setReadOnly(True)
         self.label.setLineWrapMode(QPlainTextEdit.NoWrap)
 
+        # Checkboxes adicionales
+        self.ischeckbox_wavs = False
+        self.checkbox_wavs = QCheckBox("Process WAV files to AT3", self)
+        self.checkbox_wavs.stateChanged.connect(self.on_state_checbox_wavs)
+        # self.checkbox_opcion2 = QCheckBox("Usar compresión avanzada", self)
+
         layout = QVBoxLayout()
         layout.addWidget(self.edit_lb_pack)
         layout.addWidget(self.edit_lbl_files)
@@ -201,10 +207,15 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.boton_extiso)
         layout.addWidget(self.boton_compiso)
         layout.addWidget(self.label)
+        layout.addWidget(self.checkbox_wavs)
+        # layout.addWidget(self.checkbox_opcion2)
 
         # Asignar el layout al widget central
         central_widget.setLayout(layout)
 
+    def on_state_checbox_wavs(self, state):
+        self.ischeckbox_wavs = (state == Qt.Checked)
+        print(self.ischeckbox_wavs)
 
     def dragEnterEvent(self, event):
         #verifica si lo arrastrado son archivos
@@ -281,6 +292,8 @@ class MainWindow(QMainWindow):
         def delete_content_folder(path_folder):
             for elemento in os.listdir(path_folder):
                 ruta_elemento = os.path.join(path_folder, elemento)
+                if Path(ruta_elemento).suffix in ".json":
+                    continue
                 if os.path.isfile(ruta_elemento) or os.path.islink(ruta_elemento):
                     os.remove(ruta_elemento)
                 elif os.path.isdir(ruta_elemento):
