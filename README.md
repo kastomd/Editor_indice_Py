@@ -17,9 +17,9 @@ To get started, you can download the latest version of the app from the followin
 
 If you encounter any errors, please install the following redistributable packages.
 
-Microsoft Visual C++ 2005 SP1 Redistributable Package (x86)
+- Microsoft Visual C++ 2005 SP1 Redistributable Package (x86)
 
-Microsoft Visual C++ 2005 SP1 Redistributable Package (x64)
+- Microsoft Visual C++ 2005 SP1 Redistributable Package (x64)
 
 ## How to convert WAV audio files to AT3
 
