@@ -122,7 +122,8 @@ class DataFileManager():
         offset = 0
         num_files = int(self.contenedor.edit_lbl_files.text(), 16) # total de archivos
         size_indexs = (num_files + 1) * 0x10
-        data_start = self.contenedor.index_Packfile[0] + size_indexs
+        data_start = self.contenedor.index_Packfile[0] if not self.contenedor.is_bin else 0
+        data_start += size_indexs
 
         # procesar los wav a at3
         if self.contenedor.ischeckbox_wavs:
@@ -130,14 +131,17 @@ class DataFileManager():
             self.convert_wav16bitPCM_to_at3(files_path=files_wav)
 
 
-        with open(self.contenedor.contenedor.path_iso.parent / f"compress_{self.contenedor.contenedor.path_iso.name}", "wb") as f_iso_c:
+        with open(self.contenedor.name_compress_iso, "wb") as f_iso_c:
             with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
                 dex_len = int(self.contenedor.edit_lbl_data_size.text(), 16) - size_indexs
-                dex = b'\x00' * dex_len # relleno o padding antes del contenido de los arrchivos
+                dex = b'\x00' * dex_len # relleno o padding antes del contenido de los archivos
 
-                f_iso.seek(0)
+                
+                f_iso.seek(0 if not self.contenedor.is_bin else self.contenedor.index_Packfile[0])
                 data_iso = f_iso.read(data_start) # datos inciales del iso
-                f_iso_c.write(data_iso + dex)
+                f_iso_c.write(data_iso)
+
+                f_iso_c.write(dex)
 
             # Escribir los archivos uno a uno
             for file_number in range(1, num_files + 1):
@@ -173,6 +177,14 @@ class DataFileManager():
                     f_iso_c.write(file_content.read())
                 new_indexs[1] = True
 
+            # comprueba si el size del iso cumple los parametros del sector en discos UMD 
+            size_iso_c = f_iso_c.tell()
+            remainder = size_iso_c % 0x800
+            if  remainder != 0:
+                padding = 0x800 - remainder
+                f_iso_c.write(b"\x00" * padding)
+                print("Padding was added to the end of the ISO")
+            
         return new_indexs
 
     def convert_at3_to_wav_16bitPCM(self, at3_files):

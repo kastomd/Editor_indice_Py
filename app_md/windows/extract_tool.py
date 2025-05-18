@@ -101,7 +101,7 @@ class ExtractTool(QDialog):
         self.pad_to_16_checkbox.setChecked(True)
         self.pad_to_16_checkbox.stateChanged.connect(self.on_pad_checkbox_changed)
 
-        self.proces_wav_checkbox = QCheckBox("Proces wav")
+        self.proces_wav_checkbox = QCheckBox("Process wav")
         self.proces_wav_checkbox.setChecked(True)
         self.proces_wav_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_wav)
 

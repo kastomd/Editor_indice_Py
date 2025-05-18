@@ -86,16 +86,20 @@ class BaseApp:
         # Menu File
         file_menu = menu_bar.addMenu("File")
         openiso_action = QAction("Open iso", self.window)
+        savebin_action = QAction("Save as BIN", self.window)
         closeiso_action = QAction("Close iso", self.window)
         exit_action = QAction("Exit", self.window)
         exit_action.setShortcut(QKeySequence("Ctrl+W"))
 
         openiso_action.setShortcut(QKeySequence("Ctrl+O"))
         openiso_action.triggered.connect(self.open_iso)
+        savebin_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        savebin_action.triggered.connect(lambda: self.window.compress_task(packBin=True))
         closeiso_action.triggered.connect(lambda :self.close_iso(view= False))
         exit_action.triggered.connect(self.window.close)
 
         file_menu.addAction(openiso_action)
+        file_menu.addAction(savebin_action)
         file_menu.addAction(closeiso_action)
         file_menu.addAction(exit_action)
 
@@ -140,7 +144,7 @@ class BaseApp:
     def close_iso(self, view=True):
         if not self.path_iso:
             return
-        #confirmacion para limpiar el path iso
+        # confirmacion para limpiar el path iso
         if self.path_iso and not view:
             answer = self.window.question_dialog("Are you sure you want to close the ISO path of the program?")
 
@@ -154,11 +158,15 @@ class BaseApp:
 class MainWindow(QMainWindow):
     def __init__(self, contenedor):
         super().__init__()
-        #clase baseapp
+        # clase baseapp
         self.contenedor = contenedor
-        #version y icon del app
+
+        # version y icon del app
         self.version = self.contenedor.version
         self.icon_path = self.contenedor.icon
+
+        self.is_bin = False
+        self.name_compress_iso = None
 
         self.thread_pool = QThreadPool()
 
@@ -166,7 +174,7 @@ class MainWindow(QMainWindow):
         self.setFixedSize(550, 280)
         self.setWindowIcon(QIcon(str(self.icon_path)))
 
-        #acepta drop
+        # acepta drop
         self.setAcceptDrops(True)
 
         # Crear el widget central
@@ -188,7 +196,7 @@ class MainWindow(QMainWindow):
         self.boton_extiso = QPushButton("extract iso", self)
         self.boton_extiso.clicked.connect(self.extract_task)
         self.boton_compiso = QPushButton("compress iso", self)
-        self.boton_compiso.clicked.connect(self.compress_task)
+        self.boton_compiso.clicked.connect(lambda: self.compress_task(packBin=False))
 
         self.label = QPlainTextEdit("path iso", self)
         self.label.setReadOnly(True)
@@ -215,10 +223,9 @@ class MainWindow(QMainWindow):
 
     def on_state_checbox_wavs(self, state):
         self.ischeckbox_wavs = (state == Qt.Checked)
-        # print(self.ischeckbox_wavs)
 
     def dragEnterEvent(self, event):
-        #verifica si lo arrastrado son archivos
+        # verifica si lo arrastrado son archivos
         if event.mimeData().hasUrls():
             event.setDropAction(Qt.MoveAction)
             event.accept()
@@ -353,14 +360,18 @@ class MainWindow(QMainWindow):
         self.datafilemanager.task_save()
         
 
-    def compress_task(self):
+    def compress_task(self, packBin:bool=False):
         if not self.contenedor.path_iso:
             self.success_dialog(["open a file first"], "Warning!")
             return
 
+        self.is_bin = packBin
+
         self.setEnabled(False)
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        #cargar paths del iso
+
+        
+        # cargar paths del iso
         try:
             self.paths_iso = IsoReader.listar_archivos_iso(self.contenedor.path_iso)
         except Exception as e:
@@ -368,7 +379,7 @@ class MainWindow(QMainWindow):
             self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
             return
 
-        #obtener el path packfile
+        # obtener el path packfile
         self.index_Packfile = self.paths_iso.get(self.edit_lb_pack.text())
 
         if not self.index_Packfile:
@@ -379,21 +390,23 @@ class MainWindow(QMainWindow):
             
             return
 
-        #carpeta con los archivos
+        # carpeta con los archivos
         file_iso = Path(self.contenedor.path_iso)
         self.new_folder = file_iso.parent / f"ext_PACKFILE_BIN_{file_iso.stem}"
         if not self.new_folder.exists():
             self.manejar_error(f"The folder \"{self.new_folder.name}\" does not exist in the file path.")
             return
 
-        if QFile.exists(str(self.contenedor.path_iso.parent / f"compress_{self.contenedor.path_iso.name}")):
-            respuesta = self.question_dialog("The iso compress exists; its file will be deleted.")
+        self.name_compress_iso = self.contenedor.path_iso.parent / f"compress_{self.contenedor.path_iso.name if not self.is_bin else 'PACKFILE.BIN'}"
+
+        if QFile.exists(str(self.name_compress_iso)):
+            respuesta = self.question_dialog(f"The {'iso' if not self.is_bin else 'BIN'} compress exists; its file will be deleted.")
             
             if respuesta == QMessageBox.Cancel:
                 self.success_dialog(["Compress operation canceled by the user."])
                 return
 
-        #importar los archivos a la iso backup
+        # importar los archivos a la iso backup
         self.datafilemanager = DataFileManager(self)
         self.datafilemanager.task_import()
 
