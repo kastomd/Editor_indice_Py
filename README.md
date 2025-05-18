@@ -63,7 +63,7 @@ If your file does not follow this format, the tool will automatically convert it
 First, locate the ***metadato_for_wav.json*** file. Inside, you'll find the audios that include loop information.
 If your WAV does not have a loop, you can add it using this file—do not use another program.
 
-You only need to modify loop_start and loop_end.
+You only need to modify **loop_start** and **loop_end**.
 
 If you want the entire audio to loop, use **"force_loop": "-L"**.
 
