@@ -42,8 +42,8 @@ class DataConvert():
 
     
     def setDataIso(self):
-        path_compress = self.contenedor.contenedor.path_iso.parent / f"compress_{self.contenedor.contenedor.path_iso.name}"
-        index_packfile = self.contenedor.index_Packfile[0]
+        path_compress = self.contenedor.name_compress_iso
+        index_packfile = self.contenedor.index_Packfile[0] if not self.contenedor.is_bin else 0
         nume_files = int(self.contenedor.edit_lbl_files.text(), 16)
         reem = ""
 
@@ -83,7 +83,7 @@ class DataConvert():
             if self.contenedor.isleftover:
                 reem += "\n\nThe leftover.unk file was also written to the ISO."
 
-        return [f"compress_task finished{reem}"]
+        return [f"{'iso' if not self.contenedor.is_bin else 'BIN'} compress_task finished{reem}"]
 
 
     def getOffsetConvert(self, val, set_v: bool = True):

@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 class AT3HeaderBuilder:
-    def __init__(self, data_size, sample_rate=44100, channels=2, samples=0, byte_rate=13092):
+    def __init__(self, data_size=0, sample_rate=44100, channels=2, samples=0, byte_rate=13092):
         self.data_size = data_size
         self.sample_rate = sample_rate
         self.channels = channels
@@ -90,33 +90,36 @@ class AT3HeaderBuilder:
 
     @staticmethod
     def _is_valid_wav(file_path: Path) -> bool:
-        # Verifica si el archivo VAG tiene el encabezado correcto y no esta vacio
+        # Verifica si el archivo wav tiene el encabezado correcto y no esta vacio
         with open(file_path, "rb") as f:
             f.seek(0, 2)  # Mover el puntero al final del archivo
             size = f.tell()
             if size == 0:
                 return False
+
+            #obtiene el riff y wave
             f.seek(0)
             riff = f.read(4)
             f.seek(8)
             wav = f.read(4)
+
         return riff == b'RIFF' and wav == b'WAVE'
 
     def convert_wav_to_at3(self, wav_path: Path, output_at3_path: Path, bitrate:int=105, loop:bool=False):
         if not wav_path.is_file():
             raise FileNotFoundError(f"WAV file not found: {wav_path}")
 
-        # if not self._is_valid_wav(wav_path):
-        #     return f"file not converted: {wav_path.name}"
-
         exe_path = self._get_resources_path(Path("tools/psp_atrac3/psp_at3tool.exe"))
-        command = [str(exe_path), "-e", "-br", bitrate]
+        command = [str(exe_path), "-e", "-br", str(bitrate)]
+
+        # aplica el chunk smpl(looping) de inicio a fin
         if loop:
             command.append("-wholeloop")
 
         command.append(str(wav_path))
         command.append(str(output_at3_path))
 
+        # ejecutar proceso
         result = self._run_subprocess(command)
 
         if result.returncode != 0:
@@ -124,22 +127,3 @@ class AT3HeaderBuilder:
         
         return f"Success: {output_at3_path.name}"
 
-
-
-# Ejemplo de uso
-# if __name__ == "__main__":
-#     input_data_file = r"E:\Desktop\pruebamusic.at3"
-#     output_file = r"E:\Desktop\output.at3"
-
-#     # Leer datos de audio puro (sin encabezado)
-#     with open(input_data_file, "rb") as f:
-#         audio_data = f.read()
-
-#     # Crear encabezado
-#     builder = AT3HeaderBuilder(data_size=len(audio_data))
-#     header = builder.build_header()
-
-#     # Guardar archivo completo
-#     AT3HeaderBuilder.write_file(output_file, header, audio_data)
-
-#     print("Archivo AT3 generado con exito.")

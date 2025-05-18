@@ -33,7 +33,9 @@ WAV format:
 
 > Channels: 2 (stereo)
 
-You can also place the WAV file inside the ext_PACKFILE_BIN_yourisoname folder and check this box so the tool converts the WAV to AT3 and creates the ISO.
+### Compress the ISO including the WAV audio files
+
+You can also place the WAV file inside the **ext_PACKFILE_BIN_yourisoname** folder and check this box so the tool converts the WAV to AT3 and creates the ISO.
 Obviously, the WAV file must have the same name as the file it is going to replace.
 
 ![image](https://github.com/user-attachments/assets/975d571c-347c-49b0-ad80-fb90f3c39524)
@@ -41,7 +43,7 @@ Obviously, the WAV file must have the same name as the file it is going to repla
 
 In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV audio contains the SMPL chunk, it won’t be used because the game only reads the **raw AT3** audio.
 
-## How to convert VAG to WAV
+## How to convert VAG to WAV with the extract tool
 
 For this case, you need to obtain the full PPHD file. It is also compatible with Naruto Shippuden: Ultimate Ninja Impact by checking the "PPHD narut" box for that case. If the file is from Tenkaichi Tag Team, make sure that option is unchecked.
 
@@ -58,18 +60,18 @@ If your file does not follow this format, the tool will automatically convert it
 
 > Channels: 1 (mono)
 
-## How can I loop the audio?
+### How can I loop the Vag audio?
 
 First, locate the ***metadato_for_wav.json*** file. Inside, you'll find the audios that include loop information.
 If your WAV does not have a loop, you can add it using this file—do not use another program.
 
-You only need to modify loop_start and loop_end.
+You only need to modify **loop_start** and **loop_end**.
 
 If you want the entire audio to loop, use **"force_loop": "-L"**.
 
 To remove the loop (if it exists), use **"force_loop": "-1"**.
 
-When force_loop is empty, the tool will use the assigned **loop_start** and **loop_end**.
+When **force_loop** is empty, the tool will use the assigned **loop_start** and **loop_end**.
 
 Example:
 
@@ -85,3 +87,19 @@ Example:
 
 
 P.S.: Don’t expect to see pro-level code.
+
+### How to edit the .txt files of Tenkaichi Tag Team
+
+Just drag and extract the file.
+
+Make sure to save the .txt files using one of the formats listed here. Do not use any other encoding:
+
+Accepted encodings:
+
+- UTF-8
+
+- UTF-8 with BOM
+
+- UTF-16 Big Endian with BOM
+
+- UTF-16 Little Endian with BOM
