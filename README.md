@@ -85,9 +85,6 @@ Example:
 ```
 **Reminder:** this file only affects WAV audio files, resulting in a VAG file with a loop. You cannot assign a loop directly to a VAG file.
 
-
-P.S.: Don’t expect to see pro-level code.
-
 ### How to edit the .txt files of Tenkaichi Tag Team
 
 Just drag and extract the file.
@@ -103,3 +100,5 @@ Accepted encodings:
 - UTF-16 Big Endian with BOM
 
 - UTF-16 Little Endian with BOM
+
+P.S.: Don’t expect to see pro-level code.
