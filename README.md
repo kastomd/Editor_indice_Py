@@ -15,7 +15,11 @@ To get started, you can download the latest version of the app from the followin
 
 [![GitHub All Releases](https://img.shields.io/github/v/release/kastomd/Editor_indice_Py?style=for-the-badge)](https://github.com/kastomd/Editor_indice_Py/releases/latest)
 
+If you encounter any errors, please install the following redistributable packages.
 
+Microsoft Visual C++ 2005 SP1 Redistributable Package (x86)
+
+Microsoft Visual C++ 2005 SP1 Redistributable Package (x64)
 
 ## How to convert WAV audio files to AT3
 
