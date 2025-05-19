@@ -45,7 +45,7 @@ Obviously, the WAV file must have the same name as the file it is going to repla
 ![image](https://github.com/user-attachments/assets/975d571c-347c-49b0-ad80-fb90f3c39524)
 ![image](https://github.com/user-attachments/assets/7629b050-cea0-4f3d-8152-43a0d22ff208)
 
-In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV audio contains the SMPL chunk, it won’t be used because the game only reads the **raw AT3** audio.
+In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV audio contains the SMPL chunk, it won’t be used because the game only reads the audio data in AT3 format—the header is not used in this game.
 
 ## How to convert VAG to WAV with the extract tool
 
