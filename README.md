@@ -17,9 +17,9 @@ To get started, you can download the latest version of the app from the followin
 
 If you encounter any errors, please install the following redistributable packages.
 
-- (Microsoft Visual C++ 2005 SP1 Redistributable Package (x86))[https://www.microsoft.com/en-us/download/details.aspx?id=26347]
+- Microsoft Visual C++ 2005 SP1 Redistributable Package (x86)
 
-- (Microsoft Visual C++ 2005 SP1 Redistributable Package (x64))[https://www.microsoft.com/en-us/download/details.aspx?id=26347]
+- Microsoft Visual C++ 2005 SP1 Redistributable Package (x64)
 
 ## How to convert WAV audio files to AT3
 
@@ -104,22 +104,5 @@ Accepted encodings:
 - UTF-16 Big Endian with BOM
 
 - UTF-16 Little Endian with BOM
-
-
-## Clone Project
-
-Create a new fork of this repository.
-Or simply clone the project (not recommended if you plan to add features).
-
-Make sure you are using Python 3.11.9.
-
-You will need to install the requirements:
-
-```
-pip install -r requirements.txt
-```
-
-Then you'll need the CLI tools for vgmstream, at3psp, and aiff2vag.
-These are required if you plan to work with audio files; otherwise, you can skip them.
 
 P.S.: Don’t expect to see pro-level code.
