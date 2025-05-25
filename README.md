@@ -50,7 +50,7 @@ Obviously, the WAV file must have the same name as the file it is going to repla
 In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV audio contains the SMPL chunk, it won’t be used because the game only reads the audio data in AT3 format—the header is not used in this game.
 
 
-### How to convert WAV audio to AT3 for story mode or character mode
+### How to convert WAV audio to AT3 for story mode or characters
  In your .wav file, add ```_m_``` at the end of the name, then continue compressing the ISO. The audio will automatically adapt for story mode or character mode
  
  Make sure your audio is sped up to x2.
@@ -59,6 +59,7 @@ In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV 
  ```
  1778_6F2_m_.wav
 
+ //  If it's for converting AT3 story mode files to WAV
  1827_723_m_.unk
  ```
 
