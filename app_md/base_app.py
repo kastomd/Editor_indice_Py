@@ -110,6 +110,14 @@ class BaseApp:
         extr_action.setShortcut(QKeySequence("Ctrl+U"))
         tool_menu.addAction(extr_action)
 
+        add_m_action = QAction("Add/Remove _m_ to files", self.window)
+        add_m_action.triggered.connect(self.select_and_rename_files_with_m)
+        tool_menu.addAction(add_m_action)
+
+        wav_at3_action = QAction("Convert WAV or AT3 audio files", self.window)
+        wav_at3_action.triggered.connect(lambda: self.window.dropEvent(event=None))
+        tool_menu.addAction(wav_at3_action)
+
         # Menu About
         help_menu = menu_bar.addMenu("Help")
         about_action = QAction("About", self.window)
@@ -131,7 +139,7 @@ class BaseApp:
                 self.window,
                 "Choose ISO file",
                 "",
-                "ISO files (*.iso);;All files (*)"
+                "ISO files (*.iso);;All files (*.*)"
             )
             file_path = archivo  # Asigna lo seleccionado
 
@@ -155,6 +163,38 @@ class BaseApp:
         self.window.label.setPlainText("path iso")
         self.window.success_dialog(["path iso reseted"])
 
+    
+    def select_and_rename_files_with_m(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self.window,
+            "Choose files",
+            "",
+            "All files (*.*)"
+        )
+
+        renamed_files = []
+
+        for f in files:
+            path = Path(f)
+            if not path.exists():
+                continue
+
+            if "_m_" in path.name.lower():
+               new_name = path.name.replace("_m_", "")
+            else:
+                new_name = f"{path.stem}_m_{path.suffix}"
+
+            new_path = path.with_name(new_name)
+
+            if new_path.exists():
+                continue
+
+            path.rename(new_path)
+            renamed_files.append(new_path)
+
+        self.window.success_dialog(vaule=[f"renamed files: {len(renamed_files)}"])
+
+        
 class MainWindow(QMainWindow):
     def __init__(self, contenedor):
         super().__init__()
@@ -233,7 +273,19 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def dropEvent(self, event):
-        urls = event.mimeData().urls()
+        url_local = True
+        if event != None:
+            urls = event.mimeData().urls()
+        else:
+            files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Choose files",
+            "",
+            "All files (*.*)"
+            )
+            urls = files
+            url_local = False
+
         if not urls:
             return
 
@@ -244,7 +296,9 @@ class MainWindow(QMainWindow):
         unk_files = []
 
         for url in urls:
-            filepath = url.toLocalFile()
+            filepath = url
+            if url_local:
+                filepath = url.toLocalFile()
             ext = filepath.split('.')[-1].lower()
 
             if ext == 'iso':
@@ -254,6 +308,8 @@ class MainWindow(QMainWindow):
             elif ext == 'at3':
                 at3_files.append(Path(filepath))
             elif ext == 'unk':
+                at3_files.append(Path(filepath))
+            elif ext == 'bin':
                 at3_files.append(Path(filepath))
             else:
                 unk_files.append(filepath)
