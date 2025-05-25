@@ -258,10 +258,11 @@ class DataFileManager():
 
             # Realizar la conversion de WAV a AT3
             result = self.at3_header.convert_wav_to_at3(wav_path=wav_path, output_at3_path=at3_output_path)
+            print(result)
 
             if ch_one:
-                self.remove_block2(path_audio_at3=at3_output_path)
-            print(result)
+                result = self.remove_block2(path_audio_at3=at3_output_path)
+                print(result)
 
         # Tipo de entrada no valido
         else:
@@ -320,3 +321,5 @@ class DataFileManager():
 
         with open(path_audio_at3, 'wb') as f_w:
             f_w.write(data)
+
+        return f"remove_block2: {path_audio_at3.name}"
