@@ -247,8 +247,20 @@ class DataFileManager():
             # Construir la ruta de salida para el archivo AT3 (con extension .unk)
             at3_output_path = wav_path.parent / f"{wav_path.stem}.unk"
 
+            # Crear el ch 1
+            ch_one = False
+            if len(at3_output_path.name) > 3 and "_m_" in at3_output_path.name.lower():
+                exit_succ = self.wavcd.convert_to_mono_stereo(input_path=wav_path)
+                print(exit_succ)
+                # quitar el _m_
+                at3_output_path = at3_output_path.parent / at3_output_path.name.replace("_m_", "")
+                ch_one = True
+
             # Realizar la conversion de WAV a AT3
             result = self.at3_header.convert_wav_to_at3(wav_path=wav_path, output_at3_path=at3_output_path)
+
+            if ch_one:
+                self.remove_block2(path_audio_at3=at3_output_path)
             print(result)
 
         # Tipo de entrada no valido
@@ -277,3 +289,34 @@ class DataFileManager():
         self.wav_audios = []
 
         return [f"Files converted: {converted_format}"]
+
+    @staticmethod
+    def remove_block2(path_audio_at3:Path):
+        with open(path_audio_at3, 'rb') as f:
+            data = f.read()
+
+        offset_data = data.find(b'data')
+        if offset_data == -1:
+            raise ValueError(f"No audio data found, file: {path_audio_at3.name}")
+
+        long_audio = int.from_bytes(data[offset_data+4:offset_data+8], byteorder='little')
+        if (long_audio/0x98) % 2 != 0:
+            raise ValueError(f"Invalid file, audio data is not even, file: {path_audio_at3.name}")
+        data_audio = data[offset_data+8:offset_data+8+long_audio]
+
+        # Dividir en bloques de 0x98 bytes
+        blocks = [data_audio[i:i+0x98] for i in range(0, len(data_audio), 0x98)]
+
+        # Conservar solo los bloques en posicion impar (1er, 3er, 5to, etc.)
+        filtered_blocks = blocks[::2]
+
+        # Concatenar los bloques resultantes
+        result = b''.join(filtered_blocks)
+
+        # juntar al archivo final y ajustar parametros
+        data = data[:offset_data+8] + result + data[offset_data+8+long_audio:]
+        data = data[:offset_data+4] + len(result).to_bytes(4, byteorder='little') + data[offset_data+8:]
+        data = data[:4] + len(data[:-8]).to_bytes(4, byteorder='little') + data[8:]
+
+        with open(path_audio_at3, 'wb') as f_w:
+            f_w.write(data)

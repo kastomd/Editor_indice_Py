@@ -142,3 +142,24 @@ class WavCd():
         sf.write(wav_path, data, samplerate, subtype='PCM_16')
 
         return True
+
+    @staticmethod
+    def convert_to_mono_stereo(input_path:Path):
+
+        # Leer el archivo de audio
+        data, samplerate = sf.read(input_path)
+
+        # Verificar si el audio es stereo
+        if data.ndim == 1 or data.shape[1] != 2:
+            raise ValueError("The file must have 2 channels (stereo)")
+
+        # Calcular el promedio de los dos canales (mezcla mono)
+        mono = data.mean(axis=1)
+
+        # Duplicar el canal mono en los dos canales para mantener formato stereo
+        mono_stereo = np.stack((mono, mono), axis=1)
+
+        # Guardar el nuevo archivo con ambos canales iguales
+        sf.write(input_path, mono_stereo, samplerate)
+
+        return f"Success mono stereo: {input_path.name}"
