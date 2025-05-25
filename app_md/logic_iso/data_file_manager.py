@@ -1,5 +1,6 @@
 ﻿# import json
 from pathlib import Path
+import tempfile
 from PyQt5.QtCore import QThreadPool
 # from PyQt5.QtWidgets import QMessageBox
 
@@ -211,9 +212,18 @@ class DataFileManager():
                 with open(at3_path, "wb") as wf:
                     wf.write(content)
 
+            # Agregar dos ch, si lo requiere
+            path_file_at3n = None
+            if "_m_" in at3_path.name.lower():
+                result, path_file_at3n = self.add_block2(path_audio_at3=at3_path)
+                
+
             # Verificar que el archivo exista y no este vacio
             if at3_path.is_file() and at3_path.stat().st_size != 0:
                 wav_output_path = at3_path.parent / f"{at3_path.stem}.wav"
+
+                if path_file_at3n != None:
+                    at3_path = path_file_at3n
 
                 # Convertir el archivo AT3 a WAV
                 result = self.vagheader.convert_vag_to_wav(
@@ -323,3 +333,40 @@ class DataFileManager():
             f_w.write(data)
 
         return f"remove_block2 at3: {path_audio_at3.name}"
+
+    @staticmethod
+    def add_block2(path_audio_at3: Path):
+        with open(path_audio_at3, 'rb') as f:
+            data = f.read()
+
+        offset_data = data.find(b'data')
+        if offset_data == -1:
+            raise ValueError(f"No audio data found, file: {path_audio_at3.name}")
+
+        long_audio = int.from_bytes(data[offset_data+4:offset_data+8], byteorder='little')
+
+        data_audio = data[offset_data+8:offset_data+8+long_audio]
+
+        # Dividir en bloques de 0x98 bytes
+        blocks = [data_audio[i:i+0x98] for i in range(0, len(data_audio), 0x98)]
+
+        # Duplicar cada bloque
+        duplicated_blocks = []
+        for block in blocks:
+            duplicated_blocks.append(block)       # bloque original
+            duplicated_blocks.append(block[:])    # copia del bloque (por si se quiere editar luego)
+
+        # Unir todos los bloques duplicados en un solo bloque binario
+        result = b''.join(duplicated_blocks)
+
+        # juntar al archivo final y ajustar parametros
+        data = data[:offset_data+8] + result + data[offset_data+8+long_audio:]
+        data = data[:offset_data+4] + len(result).to_bytes(4, byteorder='little') + data[offset_data+8:]
+        data = data[:4] + len(data[:-8]).to_bytes(4, byteorder='little') + data[8:]
+
+        temp_dir = Path(tempfile.gettempdir())
+        new_file = temp_dir / path_audio_at3.name
+        with open(new_file, 'wb') as f_w:
+            f_w.write(data)
+
+        return (f"add_block2 at3: {new_file.name}", new_file)
