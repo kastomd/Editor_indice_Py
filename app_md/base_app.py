@@ -171,6 +171,8 @@ class BaseApp:
             "",
             "All files (*.*)"
         )
+        if not files:
+            return
 
         renamed_files = []
 
