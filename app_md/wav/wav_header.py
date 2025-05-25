@@ -123,7 +123,7 @@ class AT3HeaderBuilder:
         result = self._run_subprocess(command)
 
         if result.returncode != 0:
-            raise ValueError(f"Error converting \"{wav_path.name}\":\n{result.stderr}")
+            raise ValueError(f"Error converting \"{wav_path.name}\":\n{result.stderr}\nThe audio must be WAV PCM 16-bit at 44100 Hz stereo")
         
-        return f"Success: {output_at3_path.name}"
+        return f"Success at3: {output_at3_path.name}"
 

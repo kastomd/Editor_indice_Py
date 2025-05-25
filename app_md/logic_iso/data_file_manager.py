@@ -1,5 +1,7 @@
 ﻿# import json
+import os
 from pathlib import Path
+import tempfile
 from PyQt5.QtCore import QThreadPool
 # from PyQt5.QtWidgets import QMessageBox
 
@@ -125,11 +127,26 @@ class DataFileManager():
         data_start = self.contenedor.index_Packfile[0] if not self.contenedor.is_bin else 0
         data_start += size_indexs
 
+        # eliminar el _m_ de los unk
+        files_wav = list(self.contenedor.new_folder.glob("*.unk"))
+        for path in files_wav:
+            if "_m_" in path.name.lower():
+
+                new_name = path.name.replace("_m_", "")
+
+                new_path = path.with_name(new_name)
+
+                if new_path.exists():
+                    os.remove(new_path)
+
+                path.rename(new_path)
+                print(f"remove _m_: {new_path.name}")
+
+
         # procesar los wav a at3
         if self.contenedor.ischeckbox_wavs:
             files_wav = list(self.contenedor.new_folder.glob("*.wav"))
             self.convert_wav16bitPCM_to_at3(files_path=files_wav)
-
 
         with open(self.contenedor.name_compress_iso, "wb") as f_iso_c:
             with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
@@ -211,9 +228,18 @@ class DataFileManager():
                 with open(at3_path, "wb") as wf:
                     wf.write(content)
 
+            # Agregar dos ch, si lo requiere
+            path_file_at3n = None
+            if "_m_" in at3_path.name.lower():
+                result, path_file_at3n = self.add_block2(path_audio_at3=at3_path)
+                
+
             # Verificar que el archivo exista y no este vacio
             if at3_path.is_file() and at3_path.stat().st_size != 0:
                 wav_output_path = at3_path.parent / f"{at3_path.stem}.wav"
+
+                if path_file_at3n != None:
+                    at3_path = path_file_at3n
 
                 # Convertir el archivo AT3 a WAV
                 result = self.vagheader.convert_vag_to_wav(
@@ -247,9 +273,22 @@ class DataFileManager():
             # Construir la ruta de salida para el archivo AT3 (con extension .unk)
             at3_output_path = wav_path.parent / f"{wav_path.stem}.unk"
 
+            # Crear el ch 1
+            ch_one = False
+            if len(at3_output_path.name) > 3 and "_m_" in at3_output_path.name.lower():
+                exit_succ = self.wavcd.convert_to_mono_stereo(input_path=wav_path)
+                print(exit_succ)
+                # quitar el _m_
+                at3_output_path = at3_output_path.parent / at3_output_path.name.replace("_m_", "")
+                ch_one = True
+
             # Realizar la conversion de WAV a AT3
             result = self.at3_header.convert_wav_to_at3(wav_path=wav_path, output_at3_path=at3_output_path)
             print(result)
+
+            if ch_one:
+                result = self.remove_block2(path_audio_at3=at3_output_path)
+                print(result)
 
         # Tipo de entrada no valido
         else:
@@ -277,3 +316,73 @@ class DataFileManager():
         self.wav_audios = []
 
         return [f"Files converted: {converted_format}"]
+
+    @staticmethod
+    def remove_block2(path_audio_at3:Path):
+        with open(path_audio_at3, 'rb') as f:
+            data = f.read()
+
+        offset_data = data.find(b'data')
+        if offset_data == -1:
+            raise ValueError(f"No audio data found, file: {path_audio_at3.name}")
+
+        long_audio = int.from_bytes(data[offset_data+4:offset_data+8], byteorder='little')
+        if (long_audio/0x98) % 2 != 0:
+            raise ValueError(f"Invalid file, audio data is not even, file: {path_audio_at3.name}")
+        data_audio = data[offset_data+8:offset_data+8+long_audio]
+
+        # Dividir en bloques de 0x98 bytes
+        blocks = [data_audio[i:i+0x98] for i in range(0, len(data_audio), 0x98)]
+
+        # Conservar solo los bloques en posicion impar (1er, 3er, 5to, etc.)
+        filtered_blocks = blocks[::2]
+
+        # Concatenar los bloques resultantes
+        result = b''.join(filtered_blocks)
+
+        # juntar al archivo final y ajustar parametros
+        data = data[:offset_data+8] + result + data[offset_data+8+long_audio:]
+        data = data[:offset_data+4] + len(result).to_bytes(4, byteorder='little') + data[offset_data+8:]
+        data = data[:4] + len(data[:-8]).to_bytes(4, byteorder='little') + data[8:]
+
+        with open(path_audio_at3, 'wb') as f_w:
+            f_w.write(data)
+
+        return f"remove_block2 at3: {path_audio_at3.name}"
+
+    @staticmethod
+    def add_block2(path_audio_at3: Path):
+        with open(path_audio_at3, 'rb') as f:
+            data = f.read()
+
+        offset_data = data.find(b'data')
+        if offset_data == -1:
+            raise ValueError(f"No audio data found, file: {path_audio_at3.name}")
+
+        long_audio = int.from_bytes(data[offset_data+4:offset_data+8], byteorder='little')
+
+        data_audio = data[offset_data+8:offset_data+8+long_audio]
+
+        # Dividir en bloques de 0x98 bytes
+        blocks = [data_audio[i:i+0x98] for i in range(0, len(data_audio), 0x98)]
+
+        # Duplicar cada bloque
+        duplicated_blocks = []
+        for block in blocks:
+            duplicated_blocks.append(block)       # bloque original
+            duplicated_blocks.append(block[:])    # copia del bloque (por si se quiere editar luego)
+
+        # Unir todos los bloques duplicados en un solo bloque binario
+        result = b''.join(duplicated_blocks)
+
+        # juntar al archivo final y ajustar parametros
+        data = data[:offset_data+8] + result + data[offset_data+8+long_audio:]
+        data = data[:offset_data+4] + len(result).to_bytes(4, byteorder='little') + data[offset_data+8:]
+        data = data[:4] + len(data[:-8]).to_bytes(4, byteorder='little') + data[8:]
+
+        temp_dir = Path(tempfile.gettempdir())
+        new_file = temp_dir / path_audio_at3.name
+        with open(new_file, 'wb') as f_w:
+            f_w.write(data)
+
+        return (f"add_block2 at3: {new_file.name}", new_file)

@@ -25,6 +25,8 @@ If you encounter any errors, please install the following redistributable packag
 
 You can drag and drop the audio files onto the index editor window, and the conversion will automatically start—whether it's from WAV to AT3 or AT3 to WAV.
 
+Or use the option **Tool > Convert audio WAV or AT3**
+
 **Important**
 
 The conversion from **WAV to AT3** must follow this format exactly. Do not attempt to change any parameters, otherwise the tool will throw an error.
@@ -46,6 +48,25 @@ Obviously, the WAV file must have the same name as the file it is going to repla
 ![image](https://github.com/user-attachments/assets/7629b050-cea0-4f3d-8152-43a0d22ff208)
 
 In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV audio contains the SMPL chunk, it won’t be used because the game only reads the audio data in AT3 format—the header is not used in this game.
+
+
+### How to convert WAV audio to AT3 for story mode or characters
+ In your .wav file, add ```_m_``` at the end of the name, then continue compressing the ISO. The audio will automatically adapt for story mode or character mode
+ 
+ Make sure your audio is sped up to x2.
+
+ Example:
+ ```
+ 1778_6F2_m_.wav
+
+ //  If it's for converting AT3 story mode files to WAV
+ 1827_723_m_.unk
+ ```
+
+ Do not apply this to music, as it will remove the stereo from the audio and make it sound a bit strange.
+
+ In Tool > **Add/Remove ```_m_``` to files**, you can add or remove the ```_m_``` from the files you want.
+
 
 ## How to convert VAG to WAV with the extract tool
 
