@@ -187,7 +187,7 @@ class BaseApp:
             new_path = path.with_name(new_name)
 
             if new_path.exists():
-                continue
+                os.remove(new_path)
 
             path.rename(new_path)
             renamed_files.append(new_path)

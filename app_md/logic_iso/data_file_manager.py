@@ -1,4 +1,5 @@
 ﻿# import json
+import os
 from pathlib import Path
 import tempfile
 from PyQt5.QtCore import QThreadPool
@@ -126,11 +127,26 @@ class DataFileManager():
         data_start = self.contenedor.index_Packfile[0] if not self.contenedor.is_bin else 0
         data_start += size_indexs
 
+        # eliminar el _m_ de los unk
+        files_wav = list(self.contenedor.new_folder.glob("*.unk"))
+        for path in files_wav:
+            if "_m_" in path.name.lower():
+
+                new_name = path.name.replace("_m_", "")
+
+                new_path = path.with_name(new_name)
+
+                if new_path.exists():
+                    os.remove(new_path)
+
+                path.rename(new_path)
+                print(f"remove _m_: {new_path.name}")
+
+
         # procesar los wav a at3
         if self.contenedor.ischeckbox_wavs:
             files_wav = list(self.contenedor.new_folder.glob("*.wav"))
             self.convert_wav16bitPCM_to_at3(files_path=files_wav)
-
 
         with open(self.contenedor.name_compress_iso, "wb") as f_iso_c:
             with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
