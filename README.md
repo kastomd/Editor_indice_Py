@@ -57,6 +57,7 @@ In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV 
 
  Example:
  ```
+// If it's for converting WAV  to AT3 story mode files or characters
  1778_6F2_m_.wav
 
  //  If it's for converting AT3 story mode files to WAV
