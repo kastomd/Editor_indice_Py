@@ -10,6 +10,7 @@ from PyQt5.QtCore import QThreadPool, Qt, pyqtSignal
 from app_md.logic_extr.data_file_manager import DataFileManager
 from app_md.logic_extr.data_convert import DataConvert
 from app_md.logic_iso.worker import Worker
+from app_md.windows.name_list_editor import NameListEditor
 
 class ExtractTool(QDialog):
     def __init__(self, window=None):
@@ -21,6 +22,7 @@ class ExtractTool(QDialog):
         self.datafilemanager = DataFileManager()
         self.dataconvert = DataConvert(self)
         self.thread_pool = QThreadPool()
+        self.exRenamer = NameListEditor(self.contenedor.contenedor)
 
         self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint |
                             Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint)
@@ -47,10 +49,13 @@ class ExtractTool(QDialog):
         action_edit = QAction("Editor indice", self)
         action_edit.triggered.connect(self.contenedor.to_the_front)
         action_edit.setShortcut(QKeySequence("Ctrl+E"))
+        action_edit_exr = QAction("Name List Editor", self)
+        action_edit_exr.triggered.connect(lambda: self.exRenamer.show_exr())
 
         file_menu.addAction(action_close_fil)
         file_menu.addAction(action_salir)
         tool_menu.addAction(action_edit)
+        tool_menu.addAction(action_edit_exr)
         self.menu_bar.addMenu(file_menu)
         self.menu_bar.addMenu(tool_menu)
 
