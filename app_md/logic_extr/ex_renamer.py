@@ -2,10 +2,41 @@
 import struct
 import zlib
 
-
 class ExRenamer():
-    def __init__(self):
-        pass
+    def __init__(self, contenedor):
+        self.content = contenedor
+        self.data_keys = [b'\x00\x00\x01\xF1', b'\x50\x50\x56\x41']
+        self.categoria_renamer = None
+
+    def renamer(self, name_unk):
+        for cat, items in self.categoria_renamer.items():
+            for row in range(len(items)):
+                if name_unk == items[row][0]:
+                    path_renamer =  f"{items[row][1]}" if "*" in cat else Path(f"{cat}/{items[row][1]}")
+
+                    return path_renamer # retorna la carpeta y el nombre el archivo
+        return False
+
+    def check_type(self, key, n_vag:int=0):
+        if not key in self.data_keys:
+            self.categoria_renamer = None
+            return False
+
+        if key == self.data_keys[0]:
+            self.categoria_renamer = self.content.extract_dynamic_categories(ruta_txt=self.content.listpack / "patch.txt")
+            return True
+
+        if key == self.data_keys[1]:
+            if n_vag == 97:
+                name_list = "sfx_ch.txt"
+            elif n_vag == 85:
+                name_list = "sfx_bt.txt"
+            else:
+                self.categoria_renamer = None
+                return False
+
+            self.categoria_renamer = self.content.extract_dynamic_categories(ruta_txt=self.content.listpack / name_list)
+            return True
 
 class TanmAnmCompressor():
     def __init__(self):

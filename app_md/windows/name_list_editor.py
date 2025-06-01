@@ -2,7 +2,7 @@
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import (
-    QWidget, QPushButton, QHBoxLayout,
+    QApplication, QWidget, QPushButton, QHBoxLayout,
     QVBoxLayout, QTabWidget, QGridLayout, QLineEdit, QScrollArea, QComboBox,
     QDialog
 )
@@ -25,8 +25,7 @@ class NameListEditor(QDialog):
 
         # Parte superior: 3 botones horizontales
         top_button_layout = QHBoxLayout()
-        top_button_layout.addWidget(QPushButton("Save"))
-        top_button_layout.addWidget(QPushButton("Import"))
+        top_button_layout.addWidget(QPushButton("Save as"))
         
         combo_box = QComboBox()
         combo_box.setMaximumWidth(150)
@@ -56,6 +55,7 @@ class NameListEditor(QDialog):
         self.resize(500, 300)
 
     def on_combo_text_changed(self, text):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
         # Limpiar las tabs existentes
         self.tabs.clear()
 
@@ -63,6 +63,8 @@ class NameListEditor(QDialog):
         categorias = self.extract_dynamic_categories(self.listpack / f"{text}.txt")
         for cat, items in categorias.items():
             self.tabs.addTab(self.create_scrollable_grid_tab(rows=items), f"{cat}")
+
+        QApplication.restoreOverrideCursor()
 
     def create_scrollable_grid_tab(self, rows):
         # Widget principal del tab
@@ -91,7 +93,7 @@ class NameListEditor(QDialog):
         categorias = {}
         categoria_actual = None
 
-        with open(ruta_txt, "r", encoding="utf-8") as f:
+        with open(ruta_txt, "r", encoding="utf-8-sig") as f:
             for linea in f:
                 linea = linea.strip()
                 if not linea:
