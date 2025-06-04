@@ -15,6 +15,7 @@ from app_md.windows.name_list_editor import NameListEditor
 class ExtractTool(QDialog):
     def __init__(self, window=None):
         super().__init__()
+        self.exRenamer = None
         self.path_file = None
         self.contenedor = window
         self.setAcceptDrops(True)
@@ -67,7 +68,7 @@ class ExtractTool(QDialog):
 
         drop_frame.setStyleSheet("""
             QFrame {
-                border: 2px dashed #eeefef;
+                border: 2px dashed #808080;
                 border-radius: 10px;
             }
         """)

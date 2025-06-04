@@ -51,7 +51,8 @@ class DataFileManager():
             "endianness": "big",#endian de los offsets
             "pad_offset": True,#indica si los offsets terminan en la columna 16, se rellena con 00 hasta esa columna
             "ispair": True, #indica si el ultimo offset marca hasta el final del archivo
-            "fill": '00' #tipo de relleno y marcar posible stop en lectura de indices
+            "fill": '00', #tipo de relleno y marcar posible stop en lectura de indices
+            "rename": False
         }
 
         self.data = None # data json
@@ -67,12 +68,13 @@ class DataFileManager():
         else:
             return 'unknown_endian'
 
-    def update_entry(self, key_bytes: bytes, endianness: str, pad_offset: bool, ispair: bool, fill: bytes):
+    def update_entry(self, key_bytes: bytes, endianness: str, pad_offset: bool, ispair: bool, fill: bytes, rename:bool=False):
         self.entry["key"] = key_bytes.hex()
         self.entry["endianness"] = endianness
         self.entry["pad_offset"] = pad_offset
         self.entry["ispair"] = ispair
         self.entry["fill"] = fill.hex()
+        self.entry["rename"] = rename
 
         self.data = json.dumps(self.entry, indent=4)
 

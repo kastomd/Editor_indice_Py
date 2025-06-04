@@ -1,6 +1,7 @@
 ﻿from pathlib import Path
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
+from app_md.logic_extr.ex_renamer import ExRenamer
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QHBoxLayout,
     QVBoxLayout, QTabWidget, QGridLayout, QLineEdit, QScrollArea, QComboBox,
@@ -10,6 +11,7 @@ from PyQt5.QtWidgets import (
 class NameListEditor(QDialog):
     def __init__(self, contenedor):
         super().__init__()
+        self.exRem = ExRenamer(self)
 
         self.contenedor = contenedor
 
