@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 from app_md.logic_extr.ppva import PPVA
+from app_md.logic_extr.ex_renamer import TanmAnmCompressor
 
 # import json
 
@@ -12,6 +13,7 @@ class DataConvert():
         self.content=contenedor
         self.bytes_file = None
         self.ppva = PPVA(self.content)
+        self.Tanm = TanmAnmCompressor()
         self.files_list = []
 
     def load_offsets(self):
@@ -156,6 +158,12 @@ class DataConvert():
             self.content.datafilemanager.entry["rename"] = True
             self.content.datafilemanager.data = json.dumps(self.content.datafilemanager.entry, indent=4)
 
+            # descomprimir anims
+            if self.content.ischeckbox_anims:
+                folders_with_anims = [p for p in output_path.iterdir() if p.is_dir() and "anims" in p.name.lower()]
+                for name_folder_anims in folders_with_anims:
+                    self.Tanm.batch_convert_tanm_anm(folder_path=name_folder_anims, ext="tanm")
+
         # Guardar configuracion
         with open(output_path / "config.set", "w") as cf:
             cf.write(self.content.datafilemanager.data)
@@ -206,7 +214,13 @@ class DataConvert():
         n_files = 0
         self.isrenamer = entry.get("rename", False)
         if self.isrenamer:
+            if key_data == b'\x00\x00\x01\xf1' and self.content.ischeckbox_anims:
+                folders_with_anims = [p for p in name_folder.iterdir() if p.is_dir() and "anims" in p.name.lower()]
+                for name_folder_anims in folders_with_anims:
+                    self.Tanm.batch_convert_tanm_anm(folder_path=name_folder_anims, ext="anm")
+
             sub_folders_parent = self.get_sorted_subfolders(ruta_base=name_folder)
+            # print(sub_folders_parent)
             for folder_path in sub_folders_parent:
                 self.files_list.extend(self.get_files_sorted_numerically(folder=Path(f"{name_folder}/{folder_path}")))
             n_files = len(self.files_list)
@@ -350,6 +364,10 @@ class DataConvert():
 
         # Filtra solo archivos
         archivos = [f for f in folder.iterdir() if f.is_file()]
+
+        # solomente aplica en los parches con carpeta anims
+        if "anims" in folder.name:
+            archivos = [f for f in archivos if f.suffix != ".anm"]
 
         def extraer_numero(file: Path):
             match = re.match(r'^(\d+)_', file.name)

@@ -1,4 +1,5 @@
-﻿import os
+﻿from collections import defaultdict
+import os
 from pathlib import Path
 import re
 import shutil
@@ -30,7 +31,7 @@ class ExtractTool(QDialog):
 
         self.setWindowIcon(self.contenedor.windowIcon())
         self.setFont(self.contenedor.font())
-        self.setWindowTitle("Extract tool")
+        self.setWindowTitle(f"Extract tool - v:{self.contenedor.version}")
         self.setFixedSize(430, 350)
 
         # Layout principal
@@ -46,17 +47,23 @@ class ExtractTool(QDialog):
         action_close_fil = QAction("Close file", self)
         action_close_fil.triggered.connect(self.close_file)
 
+        # tool menu
         tool_menu = QMenu("Tool", self)
         action_edit = QAction("Editor indice", self)
         action_edit.triggered.connect(self.contenedor.to_the_front)
         action_edit.setShortcut(QKeySequence("Ctrl+E"))
+        
         action_edit_exr = QAction("Name List Editor", self)
         action_edit_exr.triggered.connect(lambda: self.exRenamer.show_exr())
+
+        action_anm_tanm = QAction("Convert anm or tanm", self)
+        action_anm_tanm.triggered.connect(self.process_anm)
 
         file_menu.addAction(action_close_fil)
         file_menu.addAction(action_salir)
         tool_menu.addAction(action_edit)
         tool_menu.addAction(action_edit_exr)
+        tool_menu.addAction(action_anm_tanm)
         self.menu_bar.addMenu(file_menu)
         self.menu_bar.addMenu(tool_menu)
 
@@ -99,6 +106,7 @@ class ExtractTool(QDialog):
         self.ischeckbox_wav = True
         self.ischeckbox_subdirec = False
         self.ischeckbox_narut = False
+        self.ischeckbox_anims = False
 
          # Layout para los checkboxes en 2 filas y 2 columnas
         checkboxes_layout = QGridLayout()
@@ -117,10 +125,14 @@ class ExtractTool(QDialog):
         self.pphd_narut_checkbox = QCheckBox("PPHD narut")
         self.pphd_narut_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_narut)
 
+        self.proccess_anims_checkbox = QCheckBox("Process anims")
+        self.proccess_anims_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_anims)
+
         checkboxes_layout.addWidget(self.pad_to_16_checkbox, 0, 0)
         checkboxes_layout.addWidget(self.proces_wav_checkbox, 0, 1)
         checkboxes_layout.addWidget(self.sub_directorios_checkbox, 1, 0)
         checkboxes_layout.addWidget(self.pphd_narut_checkbox, 1, 1)
+        checkboxes_layout.addWidget(self.proccess_anims_checkbox,2, 0)
 
         layout.addLayout(checkboxes_layout)
 
@@ -141,6 +153,9 @@ class ExtractTool(QDialog):
     def on_pad_checkbox_changed_subdirec(self, state):
         self.ischeckbox_subdirec = (state == Qt.Checked)
         # print(state == Qt.Checked)
+        
+    def on_pad_checkbox_changed_anims(self, state):
+        self.ischeckbox_anims = (state == Qt.Checked)
 
     def extract_file(self):
         self.setEnabled(False)
@@ -349,7 +364,34 @@ class ExtractTool(QDialog):
 
         self.contenedor.success_dialog(["path file reset"])
 
+    def process_anm(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Choose files",
+            "",
+            "anims files (*.anm);;tanms files (*.tanm);;All files (*.*)"
+        )
 
+        if not files:
+            return
+
+        worker = Worker(lambda: self.task_anm(files=files))
+        worker.signals.resultado.connect(self.contenedor.success_dialog)
+        worker.signals.error.connect(self.contenedor.manejar_error)
+        self.thread_pool.start(worker)
+
+
+    def task_anm(self, files):
+        files_list = defaultdict(list)
+        for archivo in files:
+            archivo = Path(archivo)
+            ext = archivo.suffix.lower()
+            files_list[ext].append(archivo)
+
+        self.dataconvert.Tanm.batch_convert_tanm_anm(paths_anm=files_list.get(".anm"),
+                                                    paths_tanm=files_list.get(".tanm"))
+
+        return ["successfully converted"]
 
 
 class ClickableFrame(QFrame):

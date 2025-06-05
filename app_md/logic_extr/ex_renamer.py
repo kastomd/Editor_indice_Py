@@ -91,11 +91,21 @@ class TanmAnmCompressor():
     def __init__(self):
         pass
 
-    def batch_convert_tanm_anm(self, paths_anm, paths_tanm):
+    def batch_convert_tanm_anm(self, folder_path=None, paths_anm=[], paths_tanm=[], ext:str=""):
+        if folder_path:
+            if ext == "tanm":
+                paths_tanm = list(folder_path.glob(f"*.{ext}"))
+            else:
+                paths_anm = list(folder_path.glob(f"*.{ext}"))
+
+        res = ""
         if paths_tanm:
-            self.decompress_tanm_a_anm(paths_anim=paths_tanm)
+            res = self.decompress_tanm_a_anm(paths_anim=paths_tanm)
         if paths_anm:
-            self.compress_anm_a_tanm(paths_anim=paths_anm)
+            res += self.compress_anm_a_tanm(paths_anim=paths_anm)
+
+        if res:
+            raise ValueError(res)
 
     def decompress_tanm_a_anm(self, paths_anim):
         """
@@ -104,6 +114,8 @@ class TanmAnmCompressor():
             - Big Endian
             - SIZE (4 bytes), ZSIZE (4 bytes), seguido del bloque zlib comprimido
         """
+        errores = []
+
         if isinstance(paths_anim, list):
             for path_file in paths_anim:
                 self.decompress_tanm_a_anm(paths_anim=path_file)
@@ -120,15 +132,19 @@ class TanmAnmCompressor():
                 with open(path_anim.with_suffix(".anm"), "wb") as out:
                     out.write(resultado)
             except Exception as e:
-                raise ValueError(f"Error descomprimiendo {path_anim}: {e}")
+                errores.append(f'File: "{path_anim}":\n{e}')
 
+        if errores:
+            return "\n".join(errores)
+        return ""
     
     def compress_anm_a_tanm(self, paths_anim):
         """
         Comprime un archivo .anm (bt3-cr) de vuelta a formato .tanm (ttt) (zlib + header).
         Guarda: [SIZE descomp][ZSIZE comp][data zlib]
         """
-        
+        errores = []
+
         if isinstance(paths_anim, list):
             for path_file in paths_anim:
                 self.compress_anm_a_tanm(paths_anim=path_file)
@@ -145,4 +161,8 @@ class TanmAnmCompressor():
                     out.write(struct.pack(">I", len(zdata)))   # ZSIZE comprimido
                     out.write(zdata)
             except Exception as e:
-                raise ValueError(f"Error comprimiendo {path_anim}: {e}")
+                errores.append(f'File: "{path_anim}":\n{e}')
+
+        if errores:
+            return "\n".join(errores)
+        return ""
