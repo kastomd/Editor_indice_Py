@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+﻿import json
+from pathlib import Path
 import struct
 import zlib
 import os
@@ -6,7 +7,7 @@ import os
 class ExRenamer():
     def __init__(self, contenedor):
         self.content = contenedor
-        self.data_keys = [b'\x00\x00\x01\xF1', b'\x50\x50\x56\x41']
+        # self.data_keys = [b'\x00\x00\x01\xF1', b'\x50\x50\x56\x41']
         self.categoria_renamer = None
 
     def _renamer(self, name_unk):
@@ -65,20 +66,21 @@ class ExRenamer():
                 raise ValueError(f"File: {path_file}\n\n{e}")
 
     def check_type(self, key, n_vag:int=0):
-        if not key in self.data_keys:
+        with open(self.content.listpack / "config.set", "r", encoding="utf-8-sig") as f:
+            contenido = json.load(f)
+
+        dat_h = contenido.get(key.hex().upper())
+        if not dat_h:
             self.categoria_renamer = None
             return False
 
-        if key == self.data_keys[0]:
-            self.categoria_renamer = self.content.extract_dynamic_categories(ruta_txt=self.content.listpack / "patch.txt")
+        if isinstance(dat_h, str):
+            self.categoria_renamer = self.content.extract_dynamic_categories(ruta_txt=self.content.listpack / dat_h)
             return True
 
-        if key == self.data_keys[1]:
-            if n_vag == 97:
-                name_list = "sfx_ch.txt"
-            elif n_vag == 85:
-                name_list = "sfx_bt.txt"
-            else:
+        if isinstance(dat_h, dict):
+            name_list = dat_h.get(f"{n_vag}")
+            if not name_list:
                 self.categoria_renamer = None
                 return False
 

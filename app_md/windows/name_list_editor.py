@@ -1,9 +1,10 @@
 ﻿from pathlib import Path
+import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from app_md.logic_extr.ex_renamer import ExRenamer
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QHBoxLayout,
+    QApplication, QFileDialog, QMessageBox, QWidget, QPushButton, QHBoxLayout,
     QVBoxLayout, QTabWidget, QGridLayout, QLineEdit, QScrollArea, QComboBox,
     QDialog
 )
@@ -23,24 +24,29 @@ class NameListEditor(QDialog):
         # Layout principal
         main_layout = QVBoxLayout()
 
-        self.listpack = Path(__file__).resolve().parent / "scr"
+        # self.listpack = Path(__file__).resolve().parent / "scr"
+        self.listpack = self.get_base_path() / "scr"
+        self.listpack.mkdir(parents=True, exist_ok=True)
+        self.copy_files(path_folder=self.listpack)
 
         # Parte superior: 3 botones horizontales
         top_button_layout = QHBoxLayout()
-        top_button_layout.addWidget(QPushButton("Save as"))
+        save_button = QPushButton("Save as")
+        save_button.clicked.connect(self.save_as)
+        top_button_layout.addWidget(save_button)
         
-        combo_box = QComboBox()
-        combo_box.setMaximumWidth(150)
-        combo_box.setMinimumWidth(100)
+        self.combo_box = QComboBox()
+        self.combo_box.setMaximumWidth(150)
+        self.combo_box.setMinimumWidth(100)
 
         # agrega las opciones
         optionsCombobox = [archivo.stem for archivo in self.listpack.glob("*.txt")]
         for i in optionsCombobox:
-            combo_box.addItem(i)
+            self.combo_box.addItem(i)
 
-        combo_box.currentTextChanged.connect(self.on_combo_text_changed)
+        self.combo_box.currentTextChanged.connect(self.on_combo_text_changed)
 
-        top_button_layout.addWidget(combo_box)
+        top_button_layout.addWidget(self.combo_box)
 
         main_layout.addLayout(top_button_layout)
 
@@ -54,7 +60,27 @@ class NameListEditor(QDialog):
 
         main_layout.addWidget(self.tabs)
         self.setLayout(main_layout)
-        self.resize(500, 300)
+        self.resize(600, 350)
+
+    def get_base_path(self):
+        if getattr(sys, 'frozen', False):
+            # Ejecutable generado (e.g., PyInstaller)
+            return Path(sys.executable).parent
+        else:
+            # Script .py normal
+            return Path(__file__).resolve().parent
+
+    def copy_files(self, path_folder: Path):
+        folder_rename = Path(__file__).resolve().parent / "scr"
+
+        name_files = [archivo.name for archivo in folder_rename.glob("*") if archivo.is_file()]
+        
+        for name in name_files:
+            file_path = path_folder / name
+            if not file_path.is_file():
+                with open(folder_rename / name, "rb") as f_r:
+                    with open(file_path, "wb") as f_w:
+                        f_w.write(f_r.read())
 
     def on_combo_text_changed(self, text):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -115,6 +141,59 @@ class NameListEditor(QDialog):
 
         return categorias
 
+    def save_as(self):
+        name_file = f"{self.combo_box.currentText()}.txt"
+        # print(self.get_dynamic_categories())
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save as",
+            name_file,  # Nombre sugerido
+            "All files (*)"
+        )
+
+        if not filepath:
+            return
+
+        try:
+            with open(filepath, 'w', encoding='utf-8-sig') as f:
+                total_tabs = self.tabs.count()
+
+                for i in range(total_tabs):
+                    categoria = self.tabs.tabText(i)
+                    f.write(f"{categoria}:\n")
+
+                    tab_widget = self.tabs.widget(i)
+                    scroll_area = tab_widget.layout().itemAt(0).widget()
+                    grid_container = scroll_area.widget()
+                    grid_layout = grid_container.layout()
+
+                    for row in range(grid_layout.rowCount()):
+                        index_widget = grid_layout.itemAtPosition(row, 0).widget()
+                        name_widget = grid_layout.itemAtPosition(row, 1).widget()
+
+                        if index_widget and name_widget:
+                            index = index_widget.text()
+                            name = name_widget.text()
+                            f.write(f"{index}: {name}\n")
+
+                    # Solo agregar salto de linea entre categorias, excepto en la ultima
+                    if i < total_tabs - 1:
+                        f.write("\n")
+        except Exception as e:
+            QMessageBox.information(self, "Error", f"{e}")
+
+        QMessageBox.information(self, "Success", "Saved.")
 
     def show_exr(self):
-            self.exec_()
+        self.combo_box.currentTextChanged.disconnect(self.on_combo_text_changed)
+
+        # agrega las opciones
+        optionsCombobox = [archivo.stem for archivo in self.listpack.glob("*.txt")]
+        self.combo_box.clear()
+        for i in optionsCombobox:
+            self.combo_box.addItem(i)
+
+        self.on_combo_text_changed(text=optionsCombobox[0])
+
+        self.combo_box.currentTextChanged.connect(self.on_combo_text_changed)
+        self.exec_()
