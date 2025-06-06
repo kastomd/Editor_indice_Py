@@ -10,6 +10,7 @@ from app_md.logic_extr.ex_renamer import TanmAnmCompressor
 
 class DataConvert():
     def __init__(self, contenedor):
+        # clase ExtractTool
         self.content=contenedor
         self.bytes_file = None
         self.ppva = PPVA(self.content)
