@@ -1,4 +1,5 @@
-﻿import json
+﻿from genericpath import isfile
+import json
 import os
 from pathlib import Path
 from app_md.logic_extr.vag_header import VAGHeader
@@ -16,7 +17,7 @@ class PPVA:
     def compress(self, keydata: bytes, entry, name_folder: Path, path_file: Path, is_wav:bool=False, conten_vag_name:str="1-1.unk"):
         self.conten_vag_name = conten_vag_name
         name_file, name_vag_content = self._validate_output_files(name_folder, path_file)
-        n_vag_files = self._count_vag_files(name_folder)
+        n_vag_files = self._count_vag_files(name_folder, entry.get("rename", False))
         data_wav_loop = self._load_wav_loop_metadata(name_folder)
 
         if is_wav:
@@ -73,6 +74,18 @@ class PPVA:
             self._convert_all_to_wav(exported_files, output_dir)
         self._write_metadata(exported_files, output_dir)
 
+        if self.content.exRenamer.exRem.check_type(key=b'\x50\x50\x56\x41', n_vag=len(exported_files)) == True:
+            self.content.exRenamer.exRem.organize_and_rename_files(paths_files=exported_files, is_wav=True)
+
+            data_new = json.loads(self.content.datafilemanager.data)
+            data_new["rename"] = True
+            self.content.datafilemanager.data = json.dumps(data_new, indent=4)
+            self._save_config(output_dir)
+            
+            # renombrar el metadato wav
+            exported_files = self._count_vag_files(output_dir, True)
+            self._write_metadata(exported_files, output_dir)
+
         return [f"{len(exported_files)} VAG audio files exported"]
 
     # -----------------------
@@ -87,8 +100,20 @@ class PPVA:
                 raise ValueError(f"The \"{f.name}\" file already exists and cannot be overwritten.")
         return name_file, name_vag_content
 
-    def _count_vag_files(self, folder):
-        return sum(1 for f in folder.iterdir() if f.is_file() and f.suffix == '.vag')
+    def _count_vag_files(self, folder, renamer:bool=False):
+        def extraer_indice(path: Path):
+            nombre = path.stem
+            partes = nombre.split('_')
+            try:
+                return int(partes[0])
+            except ValueError:
+                return float('inf')
+
+        if not renamer:
+            return sum(1 for f in folder.iterdir() if f.is_file() and f.suffix == '.vag')
+        #orden numerico
+        list_vag= list(folder.rglob("*.vag"))
+        return sorted(list_vag, key=extraer_indice)
 
     def _load_wav_loop_metadata(self, folder):
         metadata_path = folder / "metadato_for_wav.json"
@@ -98,17 +123,39 @@ class PPVA:
         return None
 
     def _ensure_wav_format(self, folder, count):
-        for i in range(1, count + 1):
-            path = folder / f"{i}-{i:X}.wav"
+        countrange = count
+        if not isinstance(count, list):
+            countrange = range(1, count + 1)
+
+        for i in countrange:
+            if not isinstance(count, list):
+                path = folder / f"{i}-{i:X}.wav"
+            else:
+                path = i.with_suffix(".wav")
+
+            if not path.is_file():
+                continue
             if not self.wavcd.validar_wav_16bit_pcm(path):
                 self.wavcd.convert_wav_to_16bit(path)
 
     def _apply_loop_metadata(self, folder, count, metadata):
         self.force_loop = {}
-        for i in range(1, count + 1):
-            name = f"{i}-{i:X}.vag"
+        countrange = count
+        if not isinstance(count, list):
+            countrange = range(1, count + 1)
+
+        for i in countrange:
+            if not isinstance(count, list):
+                name = f"{i}-{i:X}.vag"
+            else:
+                name = i.name
+
             if name in metadata:
-                path = folder / f"{i}-{i:X}.wav"
+                if not isinstance(count, list):
+                    path = folder / f"{i}-{i:X}.wav"
+                else:
+                    path = i.with_suffix(".wav")
+
                 info = metadata[name]
                 start = info.get("loop_start")
                 end = info.get("loop_end")
@@ -121,10 +168,19 @@ class PPVA:
                     self.force_loop[path.name] = force_loop
 
     def _convert_wav_to_vag(self, folder, count):
-        for i in range(1, count + 1):
+        countrange = count
+        if not isinstance(count, list):
+            countrange = range(1, count + 1)
+
+        for i in countrange:
             no_force_loop = False
             force_loop = False
-            path = folder / f"{i}-{i:X}.wav"
+
+            if not isinstance(count, list):
+                path = folder / f"{i}-{i:X}.wav"
+            else:
+                path = i.with_suffix(".wav")
+
             if path.exists():
                 loop = self.force_loop.get(path.name)
                 if loop == "-L":
@@ -140,8 +196,16 @@ class PPVA:
         frecuencia = None
         e_re = b'\x00\x07' + (b'\x77' * 0xe)
 
-        for i in range(1, count + 1):
-            with open(folder / f"{i}-{i:X}.vag", "rb") as f:
+        countrange = count
+        if not isinstance(count, list):
+            countrange = range(1, count + 1)
+
+        for i in countrange:
+            path_file = i
+            if not isinstance(count, list):
+                path_file = folder / f"{i}-{i:X}.vag"
+
+            with open(path_file, "rb") as f:
                 f.seek(0x10)
                 frecuencia = int.from_bytes(f.read(4), 'big')
                 f.seek(0x30)
@@ -198,7 +262,8 @@ class PPVA:
             endianness=endian,
             pad_offset=data_file.get("eoinx", True),
             ispair=data_file.get("ispair", True),
-            fill=data_file.get("fill")
+            fill=data_file.get("fill"),
+            rename=data_file.get("rename", False)
         )
 
     def _read_audio_entries(self, seek, offset_end, endian):

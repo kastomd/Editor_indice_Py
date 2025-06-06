@@ -101,10 +101,13 @@ class WavCd():
         if not wav_path.exists():
             raise FileNotFoundError(f"File not found: {wav_path}")
 
-        with wave.open(str(wav_path), 'rb') as wf:
-            n_channels = wf.getnchannels()
-            sampwidth = wf.getsampwidth()
-            comptype = wf.getcomptype()  # 'NONE' indica PCM sin compresion
+        try:
+            with wave.open(str(wav_path), 'rb') as wf:
+                n_channels = wf.getnchannels()
+                sampwidth = wf.getsampwidth()
+                comptype = wf.getcomptype()  # 'NONE' indica PCM sin compresion
+        except Exception as e:
+            raise ValueError(f"error file: {wav_path}\n\n{e}")
 
         return n_channels == channels and sampwidth == 2 and comptype == 'NONE'
 

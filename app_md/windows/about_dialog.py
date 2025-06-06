@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
+﻿from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt
 
@@ -32,7 +32,9 @@ class AboutDialog(QDialog):
             f"Version {self.contenedor.version}<br><br>"
             "This program aims to allow the user to modify<br>files within the PACKFILE.BIN of the ISO.<br><br>"
             "<a href='https://github.com/kastomd/Editor_indice_Py'>GitHub</a> | "
-            "<a href='https://www.youtube.com/@KASTOMODDER15'>Kasto_md</a>"
+            "<a href='https://www.youtube.com/@KASTOMODDER15'>Kasto_md</a><br><br>"
+            "Data or support:<br>"
+            "<a href='https://www.youtube.com/@los-ijue30s'>Los ijue30s</a>"
         )
         text_label.setTextFormat(Qt.RichText)
         text_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
@@ -46,18 +48,8 @@ class AboutDialog(QDialog):
         # Agregar el layout horizontal al layout principal
         main_layout.addLayout(logo_text_layout)
 
-        
-        # close_button = QPushButton("Cerrar", self)
-        # close_button.clicked.connect(self.accept)
-        # main_layout.addWidget(close_button)
-
-        # Establecer el layout del di�logo
+        # Establecer el layout del diálogo
         self.setLayout(main_layout)
 
     def show_about(self):
         self.exec_()
-
-
-# def show_about():
-#     about_dialog = AboutDialog()
-#     about_dialog.show_about()

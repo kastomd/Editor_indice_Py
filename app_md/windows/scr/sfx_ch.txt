@@ -1,0 +1,114 @@
+﻿1_hurt:
+1-1: 000_hurt_1_normal.vag
+2-2: 001_hurt_2_normal.vag
+3-3: 002_hurt_3_normal.vag
+4-4: 003_hurt_4_normal.vag
+5-5: 004_hurt_5_normal.vag
+6-6: 005_hurt_1_landing.vag
+7-7: 006_hurt_2_landing.vag
+8-8: 007_hurt_1_strong.vag
+9-9: 008_hurt_2_strong.vag
+10-A: 009_hurt_3_strong.vag
+11-B: 010_hurt_4_strong.vag
+12-C: 011_hurt_5_strong.vag
+13-D: 012_hurt_1_heavy.vag
+14-E: 013_hurt_2_heavy.vag
+15-F: 014_hurt_3_heavy.vag
+16-10: 015_hurt_4_heavy.vag
+
+2_melee:
+17-11: 016_melee_1_combo.vag
+18-12: 017_melee_2_combo.vag
+19-13: 018_melee_3_combo.vag
+20-14: 019_melee_1_normal.vag
+21-15: 020_melee_2_normal.vag
+22-16: 021_melee_3_normal.vag
+23-17: 022_melee_4_normal.vag
+24-18: 023_melee_5_normal.vag
+25-19: 024_melee_6_normal.vag
+26-1A: 025_melee_7_normal.vag
+
+3_special_states:
+27-1B: 026_side_step.vag
+28-1C: 027_back_step.vag
+29-1D: 028_z_counter.vag
+30-1E: 029_z_counter_evasion.vag
+31-1F: 030_energy_evasion_1.vag
+32-20: 031_energy_evasion_2.vag
+33-21: 032_sonic_sway.vag
+34-22: 033_energy_waves_1.vag
+35-23: 034_energy_waves_2.vag
+36-24: 035_ki_charging.vag
+37-25: 036_transformation.vag
+
+4_skills:
+38-26: 037_skill_001_1.vag
+39-27: 038_skill_001_2.vag
+40-28: 039_skill_001_3.vag
+41-29: 040_skill_001_4.vag
+42-2A: 041_skill_002_1.vag
+43-2B: 042_skill_002_2.vag
+44-2C: 043_skill_002_3.vag
+45-2D: 044_skill_002_4.vag
+46-2E: 045_skill_003_1.vag
+47-2F: 046_skill_003_2.vag
+48-30: 047_skill_003_3.vag
+49-31: 048_skill_003_4.vag
+50-32: 049_skill_004_1.vag
+51-33: 050_skill_004_2.vag
+52-34: 051_skill_004_3.vag
+53-35: 052_skill_004_4.vag
+54-36: 053_skill_005_1.vag
+55-37: 054_skill_005_2.vag
+56-38: 055_skill_005_3.vag
+57-39: 056_skill_005_4.vag
+
+5_skill_1:
+58-3A: 057_skill_001_1.vag
+59-3B: 058_skill_001_2.vag
+60-3C: 059_skill_001_3.vag
+61-3D: 060_skill_001_4.vag
+62-3E: 061_skill_001_5.vag
+63-3F: 062_skill_001_6.vag
+64-40: 063_skill_001_7.vag
+65-41: 064_skill_001_8.vag
+
+6_skill_2:
+66-42: 065_skill_002_1.vag
+67-43: 066_skill_002_2.vag
+68-44: 067_skill_002_3.vag
+69-45: 068_skill_002_4.vag
+70-46: 069_skill_002_5.vag
+71-47: 070_skill_002_6.vag
+72-48: 071_skill_002_7.vag
+73-49: 072_skill_002_8.vag
+
+7_attack_1:
+74-4A: 073_skill_003_1.vag
+75-4B: 074_skill_003_2.vag
+76-4C: 075_skill_003_3.vag
+77-4D: 076_skill_003_4.vag
+78-4E: 077_skill_003_5.vag
+79-4F: 078_skill_003_6.vag
+80-50: 079_skill_003_7.vag
+81-51: 080_skill_003_8.vag
+
+8_attack_2:
+82-52: 081_skill_004_1.vag
+83-53: 082_skill_004_2.vag
+84-54: 083_skill_004_3.vag
+85-55: 084_skill_004_4.vag
+86-56: 085_skill_004_5.vag
+87-57: 086_skill_004_6.vag
+88-58: 087_skill_004_7.vag
+89-59: 088_skill_004_8.vag
+
+9_attack_3:
+90-5A: 089_skill_005_1.vag
+91-5B: 090_skill_005_2.vag
+92-5C: 091_skill_005_3.vag
+93-5D: 092_skill_005_4.vag
+94-5E: 093_skill_005_5.vag
+95-5F: 094_skill_005_6.vag
+96-60: 095_skill_005_7.vag
+97-61: 096_skill_005_8.vag

@@ -2,6 +2,7 @@
 import sys
 import traceback
 import qdarkstyle
+import winreg
 
 
 from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
@@ -33,13 +34,30 @@ class BaseApp:
         self.app = QApplication(sys.argv)
 
         # Aplicar tema oscuro de qdarkstyle
-        self.app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+        if self.is_windows_dark_mode():
+            self.app.setStyleSheet(qdarkstyle.load_stylesheet_pyqt5())
+        else:
+            self.app.setStyleSheet("")
 
         font = QFont("Cambria", 11)
         self.app.setFont(font)
 
         # Mostrar SplashScreen
         self.show_splash()
+
+    def is_windows_dark_mode(self):
+        try:
+            registry = winreg.ConnectRegistry(None, winreg.HKEY_CURRENT_USER)
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+            key = winreg.OpenKey(registry, key_path)
+
+            # 0 = oscuro, 1 = claro
+            value, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            winreg.CloseKey(key)
+
+            return value == 0  # True si es oscuro
+        except FileNotFoundError:
+            return False
 
     def show_splash(self):
         # Cargar imagen del splash

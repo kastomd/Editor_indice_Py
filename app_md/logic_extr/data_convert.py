@@ -1,6 +1,10 @@
 ﻿# from app_md.logic_extr.vag_header import VAGHeader
+import json
 import os
+from pathlib import Path
+import re
 from app_md.logic_extr.ppva import PPVA
+from app_md.logic_extr.ex_renamer import TanmAnmCompressor
 
 # import json
 
@@ -9,6 +13,8 @@ class DataConvert():
         self.content=contenedor
         self.bytes_file = None
         self.ppva = PPVA(self.content)
+        self.Tanm = TanmAnmCompressor()
+        self.files_list = []
 
     def load_offsets(self):
         # Leer el archivo completo en memoria
@@ -100,6 +106,8 @@ class DataConvert():
 
         previewtxt = b'\xFF\xFE'  # UTF-16LE BOM
 
+        paths_list = []
+
         for idx in range(size_indexs):
             start = self.data_offsets[idx]
             end = self.data_offsets[idx + 1] if idx + 1 < len(self.data_offsets) else len(self.bytes_file)
@@ -107,6 +115,7 @@ class DataConvert():
 
             file_name = f"{idx+1}-{idx+1:X}"
             file_path = output_path / f"{file_name}.{'txt' if is_txt else 'unk'}"
+            paths_list.append(file_path)
 
             if is_txt:
                 # Nombre del archivo codificado como UTF-16LE
@@ -143,6 +152,18 @@ class DataConvert():
             with open(output_path / "preview_txts.txt", "wb") as f:
                 f.write(previewtxt)
 
+        # verificar renamer
+        if self.content.exRenamer.exRem.check_type(key=bytes.fromhex(self.content.datafilemanager.entry.get("key"))[0:4]) == True:
+            self.content.exRenamer.exRem.organize_and_rename_files(paths_files=paths_list)
+            self.content.datafilemanager.entry["rename"] = True
+            self.content.datafilemanager.data = json.dumps(self.content.datafilemanager.entry, indent=4)
+
+            # descomprimir anims
+            if self.content.ischeckbox_anims:
+                folders_with_anims = [p for p in output_path.iterdir() if p.is_dir() and "anims" in p.name.lower()]
+                for name_folder_anims in folders_with_anims:
+                    self.Tanm.batch_convert_tanm_anm(folder_path=name_folder_anims, ext="tanm")
+
         # Guardar configuracion
         with open(output_path / "config.set", "w") as cf:
             cf.write(self.content.datafilemanager.data)
@@ -154,8 +175,10 @@ class DataConvert():
             endianness='little',
             pad_offset=True,
             ispair=True,
-            fill=b'\x00'
+            fill=b'\x00',
+            rename=False
         )
+
         return ['Files saved <a href="#">open folder</a>', output_path]
 
 
@@ -187,7 +210,22 @@ class DataConvert():
 
         # Contar archivos en el directorio (excluyendo "config.set")
         # n_files = sum(1 for f in name_folder.iterdir() if f.is_file()) - 1
-        n_files = sum(1 for f in name_folder.iterdir() if f.is_file() and f.suffix == '.unk')
+        self.files_list = []
+        n_files = 0
+        self.isrenamer = entry.get("rename", False)
+        if self.isrenamer:
+            if key_data == b'\x00\x00\x01\xf1' and self.content.ischeckbox_anims:
+                folders_with_anims = [p for p in name_folder.iterdir() if p.is_dir() and "anims" in p.name.lower()]
+                for name_folder_anims in folders_with_anims:
+                    self.Tanm.batch_convert_tanm_anm(folder_path=name_folder_anims, ext="anm")
+
+            sub_folders_parent = self.get_sorted_subfolders(ruta_base=name_folder)
+            # print(sub_folders_parent)
+            for folder_path in sub_folders_parent:
+                self.files_list.extend(self.get_files_sorted_numerically(folder=Path(f"{name_folder}/{folder_path}")))
+            n_files = len(self.files_list)
+        else:
+            n_files = sum(1 for f in name_folder.iterdir() if f.is_file() and f.suffix == '.unk')
 
         content_file = bytearray(key_data)
 
@@ -243,6 +281,11 @@ class DataConvert():
 
         for idx in range(1, n_files + 1):
             file_path = folder_path / f"{idx}-{idx:X}.{file_ext}"
+            
+            # obtener el path real
+            if self.isrenamer:
+                file_path = folder_path / self.files_list[idx-1]
+
             with open(file_path, "rb") as f:
                 file_data = f.read()
 
@@ -273,6 +316,7 @@ class DataConvert():
                 conten = conten[:pos_index] + offset.to_bytes(4, byteorder=endian) + conten[pos_index+4:]
 
         conten = self.pad_to_16(conten, '00')
+        self.files_list = []
 
         if self.content.ischeckbox_subdirec:
             # guarda en la ruta raiz
@@ -290,9 +334,46 @@ class DataConvert():
 
 
     def pad_to_16(self, b: bytes, fill= None) -> bytes:
+        # no aplica padding a ciertos archivos
+        if b[0:4] in [b'\x50\x50\x50\x47']:
+            return b
+
         resto = len(b) % 16
         if resto != 0:
             padding = 16 - resto
             b += bytes.fromhex(self.content.datafilemanager.entry.get("fill") if not fill else fill) * padding
         return b
 
+    def get_sorted_subfolders(self, ruta_base):
+        subcarpetas = [
+            nombre for nombre in os.listdir(ruta_base)
+            if os.path.isdir(os.path.join(ruta_base, nombre))
+        ]
+
+        # Extrae el numero inicial de cada carpeta
+        def extraer_numero(nombre):
+            coincidencia = re.match(r'^(\d+)_', nombre)
+            return int(coincidencia.group(1)) if coincidencia else float('inf')
+
+        subcarpetas_ordenadas = sorted(subcarpetas, key=extraer_numero)
+        return subcarpetas_ordenadas
+
+    def get_files_sorted_numerically(self, folder: Path):
+        if not folder.is_dir():
+            raise ValueError(f"{folder} no es un directorio valido")
+
+        # Filtra solo archivos
+        archivos = [f for f in folder.iterdir() if f.is_file()]
+
+        # solomente aplica en los parches con carpeta anims
+        if "anims" in folder.name:
+            archivos = [f for f in archivos if f.suffix != ".anm"]
+
+        def extraer_numero(file: Path):
+            match = re.match(r'^(\d+)_', file.name)
+            return int(match.group(1)) if match else float('inf')
+
+        archivos_ordenados = sorted(archivos, key=extraer_numero)
+        
+        # Devolver solo el nombre de la carpeta y el nombre del archivo
+        return [Path(f"{file.parent.name}/{file.name}") for file in archivos_ordenados]
