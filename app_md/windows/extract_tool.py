@@ -18,6 +18,7 @@ class ExtractTool(QDialog):
         super().__init__()
         self.exRenamer = None
         self.path_file = None
+        # Clase MainWindow
         self.contenedor = window
         self.setAcceptDrops(True)
 
@@ -32,7 +33,7 @@ class ExtractTool(QDialog):
         self.setWindowIcon(self.contenedor.windowIcon())
         self.setFont(self.contenedor.font())
         self.setWindowTitle(f"Extract tool - v:{self.contenedor.version}")
-        self.setFixedSize(430, 350)
+        self.setFixedSize(430, 370)
 
         # Layout principal
         layout = QVBoxLayout()
@@ -375,6 +376,11 @@ class ExtractTool(QDialog):
         if not files:
             return
 
+        # bloquear interfaz mientras se procesa
+        self.setEnabled(False)
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+
+        # crear tarea en segundo hilo
         worker = Worker(lambda: self.task_anm(files=files))
         worker.signals.resultado.connect(self.contenedor.success_dialog)
         worker.signals.error.connect(self.contenedor.manejar_error)
@@ -382,12 +388,14 @@ class ExtractTool(QDialog):
 
 
     def task_anm(self, files):
+        # separar por el tipo de archivo
         files_list = defaultdict(list)
         for archivo in files:
             archivo = Path(archivo)
             ext = archivo.suffix.lower()
             files_list[ext].append(archivo)
 
+        # procesar las diferentes animaciones
         self.dataconvert.Tanm.batch_convert_tanm_anm(paths_anm=files_list.get(".anm"),
                                                     paths_tanm=files_list.get(".tanm"))
 
