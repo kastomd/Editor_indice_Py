@@ -11,11 +11,13 @@ from app_md.logic_extr.ex_renamer import TanmAnmCompressor
 class DataConvert():
     def __init__(self, contenedor):
         # clase ExtractTool
+        self.typedata = None
         self.content=contenedor
         self.bytes_file = None
         self.ppva = PPVA(self.content)
         self.Tanm = TanmAnmCompressor()
         self.files_list = []
+        self.data_offsets = None
 
     def load_offsets(self):
         # Leer el archivo completo en memoria
@@ -345,7 +347,8 @@ class DataConvert():
             b += bytes.fromhex(self.content.datafilemanager.entry.get("fill") if not fill else fill) * padding
         return b
 
-    def get_sorted_subfolders(self, ruta_base):
+    @staticmethod
+    def get_sorted_subfolders(ruta_base):
         subcarpetas = [
             nombre for nombre in os.listdir(ruta_base)
             if os.path.isdir(os.path.join(ruta_base, nombre))
@@ -359,9 +362,10 @@ class DataConvert():
         subcarpetas_ordenadas = sorted(subcarpetas, key=extraer_numero)
         return subcarpetas_ordenadas
 
-    def get_files_sorted_numerically(self, folder: Path):
+    @staticmethod
+    def get_files_sorted_numerically(folder: Path):
         if not folder.is_dir():
-            raise ValueError(f"{folder} no es un directorio valido")
+            raise ValueError(f"{folder}\nis not a valid directory")
 
         # Filtra solo archivos
         archivos = [f for f in folder.iterdir() if f.is_file()]
