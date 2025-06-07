@@ -4,7 +4,7 @@ import struct
 import zlib
 import os
 
-class ExRenamer():
+class ExRenamer:
     def __init__(self, contenedor):
         self.content = contenedor
         # self.data_keys = [b'\x00\x00\x01\xF1', b'\x50\x50\x56\x41']
@@ -49,7 +49,8 @@ class ExRenamer():
                     # renombra el archivo si no contiene carpeta contenedora
                     path_file.rename(name_file)
 
-    def _check_is_free(self, paths_files, is_wav:bool=False):
+    @staticmethod
+    def _check_is_free(paths_files, is_wav:bool=False):
         # verifca si esta libre el archivo de algun proceso
         for path_file in paths_files:
             try:
@@ -66,6 +67,10 @@ class ExRenamer():
                 raise ValueError(f"File: {path_file}\n\n{e}")
 
     def check_type(self, key, n_vag:int=0):
+        # lee la data del archivo config y carga las diferentes configuraciones
+        # key: hace referencia a los bytes desde el offset 0x0 hasta el 0x4
+        # n_vag: diferencia entre pphd de personajes y el de batalla, usando la cantidad de audios
+
         with open(self.content.listpack / "config.set", "r", encoding="utf-8-sig") as f:
             contenido = json.load(f)
 
@@ -86,19 +91,28 @@ class ExRenamer():
 
             self.categoria_renamer = self.content.extract_dynamic_categories(ruta_txt=self.content.listpack / name_list)
             return True
+        return None
 
-class TanmAnmCompressor():
+
+class TanmAnmCompressor:
     def __init__(self):
         pass
 
-    def batch_convert_tanm_anm(self, folder_path=None, paths_anm=[], paths_tanm=[], ext:str=""):
+    def batch_convert_tanm_anm(self, folder_path=None, paths_anm=None, paths_tanm=None, ext:str= ""):
+        if paths_tanm is None:
+            paths_tanm = []
+        if paths_anm is None:
+            paths_anm = []
+
+        res = ""
+        # si se especifica el tipo de archivo a descomprimir y la carpeta
         if folder_path:
             if ext == "tanm":
                 paths_tanm = list(folder_path.glob(f"*.{ext}"))
             else:
                 paths_anm = list(folder_path.glob(f"*.{ext}"))
 
-        res = ""
+        # trabaja con ambos archivos
         if paths_tanm:
             res = self.decompress_tanm_a_anm(paths_anim=paths_tanm)
         if paths_anm:
@@ -133,6 +147,8 @@ class TanmAnmCompressor():
                     out.write(resultado)
             except Exception as e:
                 errores.append(f'File: "{path_anim}":\n{e}')
+        else:
+            raise ValueError("Paths_anim must be a list or Path object")
 
         if errores:
             return "\n".join(errores)
@@ -162,6 +178,8 @@ class TanmAnmCompressor():
                     out.write(zdata)
             except Exception as e:
                 errores.append(f'File: "{path_anim}":\n{e}')
+        else:
+            raise ValueError("Paths_anim must be a list or Path object")
 
         if errores:
             return "\n".join(errores)
