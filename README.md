@@ -2,6 +2,8 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11.9-blue)](https://www.python.org/downloads/release/python-3119/)
 [![GitHub Release](https://img.shields.io/github/v/release/kastomd/Editor_indice_Py)](https://github.com/kastomd/Editor_indice_Py/releases/latest)
+![Downloads](https://img.shields.io/github/downloads/kastomd/Editor_indice_Py/total)
+
 
 ## Features
 The program is a tool developed in Python designed to manipulate the general indices of a binary container file called packfile.bin. This file serves as a package that stores multiple resources, such as data, images, sounds, or configurations, organized in a specific format.
