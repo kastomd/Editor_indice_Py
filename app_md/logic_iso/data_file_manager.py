@@ -7,6 +7,7 @@ from PyQt5.QtCore import QThreadPool
 
 
 from app_md.logic_iso.worker import Worker
+from app_md.rename_files_iso.renamex import build_packfile_index, get_real_path
 from app_md.wav.wav_header import AT3HeaderBuilder
 from app_md.wav.wav_cd import WavCd
 from app_md.logic_extr.vag_header import VAGHeader
@@ -55,6 +56,8 @@ class DataFileManager():
         res = 'export_task finished <a href="#">open folder</a>'
         xDat = 0
 
+        index_list = build_packfile_index()
+
         #leer y guardar los archivos
         with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
             for dat_file in self.contenedor.indexs:
@@ -90,8 +93,11 @@ class DataFileManager():
 
                 # guardar el archivo
                 name_file = f"{int(dat_file[0], 16)}_{dat_file[0]}.unk"
-                path_file = self.contenedor.new_folder / name_file
+                # obtener el renamex
+                renamex_file = get_real_path(name_file, index_list)
 
+                path_file = self.contenedor.new_folder / renamex_file
+                path_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(path_file, "wb") as f_out:
                     f_out.write(dat_bytes)
 
@@ -160,9 +166,13 @@ class DataFileManager():
 
                 f_iso_c.write(dex)
 
+            index_list = build_packfile_index()
             # Escribir los archivos uno a uno
             for file_number in range(1, num_files + 1):
-                path_file = self.contenedor.new_folder / f"{file_number}_{file_number:X}.unk"
+                # obtener renamex
+                rename_filee = f"{file_number}_{file_number:X}.unk"
+                rename_filee = get_real_path(rename_filee, index_list)
+                path_file = self.contenedor.new_folder / rename_filee
 
                 with open(path_file, "rb") as file_content:
                     content = file_content.read()
