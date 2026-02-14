@@ -10,6 +10,7 @@ from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QKeySequence, QPixmap
 from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
 
+from app_md.exvoices.ex_voices import ExVoicesApp
 from app_md.windows.about_dialog import AboutDialog
 from app_md.logic_iso.iso_reader import IsoReader
 from app_md.windows.error_dialog import ErrorDialog
@@ -25,7 +26,7 @@ import shutil
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260213"
+        self.version = "1.20260214"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
@@ -136,6 +137,10 @@ class BaseApp:
         wav_at3_action.triggered.connect(lambda: self.window.dropEvent(event=None))
         tool_menu.addAction(wav_at3_action)
 
+        ex_voices_action = QAction("EX Voices", self.window)
+        ex_voices_action.triggered.connect(self.run_exvoices)
+        tool_menu.addAction(ex_voices_action)
+
         # Menu About
         help_menu = menu_bar.addMenu("Help")
         about_action = QAction("About", self.window)
@@ -148,6 +153,10 @@ class BaseApp:
     def show_extract(self):
         self.extract_w.show_extract()
         self.window.hide()
+
+    def run_exvoices(self):
+        self.win_exvoices = ExVoicesApp(self.window)  # self = ventana principal
+        self.win_exvoices.exec_()
 
     def open_iso(self, file_path=None):
         # Verifica si se arrastro un archivo
