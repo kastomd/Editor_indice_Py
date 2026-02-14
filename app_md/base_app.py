@@ -26,7 +26,7 @@ import shutil
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260213"
+        self.version = "1.20260214"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
