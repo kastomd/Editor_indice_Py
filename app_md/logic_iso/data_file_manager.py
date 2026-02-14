@@ -55,8 +55,8 @@ class DataFileManager():
 
         res = 'export_task finished <a href="#">open folder</a>'
         xDat = 0
-
-        index_list = build_packfile_index()
+        path_list_rename = self.get_base_path() / "scr" / "LISTA_PACKFILE.txt"
+        index_list = build_packfile_index(path_list_rename)
 
         #leer y guardar los archivos
         with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
@@ -166,7 +166,8 @@ class DataFileManager():
 
                 f_iso_c.write(dex)
 
-            index_list = build_packfile_index()
+            path_list_rename = self.get_base_path() / "scr" / "LISTA_PACKFILE.txt"
+            index_list = build_packfile_index(path_list_rename)
             # Escribir los archivos uno a uno
             for file_number in range(1, num_files + 1):
                 # obtener renamex
