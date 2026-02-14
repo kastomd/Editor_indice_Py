@@ -1,5 +1,6 @@
 ﻿# import json
 import os
+import sys
 from pathlib import Path
 import tempfile
 from PyQt5.QtCore import QThreadPool
@@ -13,6 +14,11 @@ from app_md.wav.wav_cd import WavCd
 from app_md.logic_extr.vag_header import VAGHeader
 
 
+def get_base_path():
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).resolve().parent
+    else:
+        return Path(__file__).resolve().parent
 
 
 class DataFileManager():
@@ -55,7 +61,7 @@ class DataFileManager():
 
         res = 'export_task finished <a href="#">open folder</a>'
         xDat = 0
-        path_list_rename = self.get_base_path() / "scr" / "LISTA_PACKFILE.txt"
+        path_list_rename = get_base_path() / "scr" / "LISTA_PACKFILE.txt"
         index_list = build_packfile_index(path_list_rename)
 
         #leer y guardar los archivos
@@ -166,7 +172,7 @@ class DataFileManager():
 
                 f_iso_c.write(dex)
 
-            path_list_rename = self.get_base_path() / "scr" / "LISTA_PACKFILE.txt"
+            path_list_rename = get_base_path() / "scr" / "LISTA_PACKFILE.txt"
             index_list = build_packfile_index(path_list_rename)
             # Escribir los archivos uno a uno
             for file_number in range(1, num_files + 1):
