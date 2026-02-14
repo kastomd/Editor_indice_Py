@@ -4792,27 +4792,27 @@ Story_Mode\Chapters\Chapter_31\Voices:
 4390_1126.unk: 4390_sm_ch31_100_m_.unk
 
 Music:
-4391_1127.unk: 4391_ost_main.at3
-4392_1128.unk: 4392_ost_free_battle.at3
-4393_1129.unk: 4393_ost_training.at3
-4394_112A.unk: 4394_ost_settings_sm.at3
-4395_112B.unk: 4395_ost_sm_1.at3
-4396_112C.unk: 4396_ost_sm_prologue.at3
-4397_112D.unk: 4397_ost_credits.at3
-4398_112E.unk: 4398_ost_battle_selection.at3
-4399_112F.unk: 4399_ost_battle_1.at3
-4400_1130.unk: 4400_ost_battle_2.at3
-4401_1131.unk: 4401_ost_battle_3.at3
-4402_1132.unk: 4402_ost_battle_4.at3
-4403_1133.unk: 4403_ost_battle_5.at3
-4404_1134.unk: 4404_ost_battle_6.at3
-4405_1135.unk: 4405_ost_battle_7.at3
-4406_1136.unk: 4406_ost_battle_8.at3
-4407_1137.unk: 4407_ost_battle_9.at3
-4408_1138.unk: 4408_ost_sm_2.at3
-4409_1139.unk: 4409_ost_sm_3.at3
-4410_113A.unk: 4410_ost_sm_4.at3
-4411_113B.unk: 4411_ost_unused.at3
+4391_1127.unk: 4391_ost_main.unk
+4392_1128.unk: 4392_ost_free_battle.unk
+4393_1129.unk: 4393_ost_training.unk
+4394_112A.unk: 4394_ost_settings_sm.unk
+4395_112B.unk: 4395_ost_sm_1.unk
+4396_112C.unk: 4396_ost_sm_prologue.unk
+4397_112D.unk: 4397_ost_credits.unk
+4398_112E.unk: 4398_ost_battle_selection.unk
+4399_112F.unk: 4399_ost_battle_1.unk
+4400_1130.unk: 4400_ost_battle_2.unk
+4401_1131.unk: 4401_ost_battle_3.unk
+4402_1132.unk: 4402_ost_battle_4.unk
+4403_1133.unk: 4403_ost_battle_5.unk
+4404_1134.unk: 4404_ost_battle_6.unk
+4405_1135.unk: 4405_ost_battle_7.unk
+4406_1136.unk: 4406_ost_battle_8.unk
+4407_1137.unk: 4407_ost_battle_9.unk
+4408_1138.unk: 4408_ost_sm_2.unk
+4409_1139.unk: 4409_ost_sm_3.unk
+4410_113A.unk: 4410_ost_sm_4.unk
+4411_113B.unk: 4411_ost_unused.unk
 
 Battle_UI:
 13262_33CE.unk: 13262_battle_ui_ja.pak
