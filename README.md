@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11.9-blue)](https://www.python.org/downloads/release/python-3119/)
 [![GitHub Release](https://img.shields.io/github/v/release/kastomd/Editor_indice_Py)](https://github.com/kastomd/Editor_indice_Py/releases/latest)
-![Downloads](https://img.shields.io/github/downloads/kastomd/Editor_indice_Py/total)
+![Downloads](https://img.shields.io/github/downloads/kastomd/Editor_indice_Py/total.svg)
 
 
 ## Features
