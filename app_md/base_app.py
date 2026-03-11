@@ -515,7 +515,7 @@ class MainWindow(QMainWindow):
         QApplication.restoreOverrideCursor()
         ErrorDialog(error_msg, self.icon_path).exec_()
 
-    def success_dialog(self, vaule, title:str="Success"):
+    def success_dialog(self, vaule, title:str="Success", parent=None):
         self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
 
@@ -523,11 +523,17 @@ class MainWindow(QMainWindow):
 
         if 'href' not in vaule[0]:
             # muestra el dialogo normal
-            QMessageBox.information(self, title, vaule[0])
+            QMessageBox.information(self if not parent else parent, title, vaule[0])
             return
 
         # muestra una ventana con texto clicked hacia una carpeta
-        self.secundaria = Open_folder_link(parent_font=self.font(), parent_icon=self.windowIcon(), messag=vaule[0], direc=self.new_folder if not isinstance(vaule[-1], Path) else vaule[-1])
+        self.secundaria = Open_folder_link(
+            parent=parent,
+            parent_font=self.font(),
+            parent_icon=self.windowIcon(),
+            messag=vaule[0],
+            direc=self.new_folder if not isinstance(vaule[-1], Path) else vaule[-1]
+        )
         self.secundaria.exec_()
 
     def question_dialog(self, content, title:str="Warning!"):

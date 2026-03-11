@@ -163,7 +163,7 @@ class ExtractTool(QDialog):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         if not self.path_file:
-            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!", parent=self)
             return
         
         #crear una tarea asincrona
@@ -178,7 +178,7 @@ class ExtractTool(QDialog):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         if not self.path_file:
-            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!", parent=self)
             return
 
         # crear una tarea asincrona
