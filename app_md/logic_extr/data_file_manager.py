@@ -52,7 +52,7 @@ class DataFileManager():
             "pad_offset": True,#indica si los offsets terminan en la columna 16, se rellena con 00 hasta esa columna
             "ispair": True, #indica si el ultimo offset marca hasta el final del archivo
             "fill": '00', #tipo de relleno y marcar posible stop en lectura de indices
-            "rename": False
+            "rename": False # indica si tiene renombrado de archivos
         }
 
         self.data = None # data json

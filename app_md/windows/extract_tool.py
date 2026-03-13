@@ -213,6 +213,10 @@ class ExtractTool(QDialog):
                 if elemento.is_file() and ".unk" in elemento.name:
                     paths.append(elemento)
 
+        # agrega extension si no la tiene
+        if not self.path_file.suffix:
+            self.path_file = self.path_file.with_name(self.path_file.name + ".unk")
+
         self.path_parent = Path(self.path_file)
         paths = []
         folder_root = self.path_parent.parent / f"compress_{self.path_parent.name}"
@@ -230,21 +234,23 @@ class ExtractTool(QDialog):
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir) # eliminar directoria en temp
 
+        # elimina el archivo temp si existe
+        file_temp = self.temp_dir.parent / self.path_parent.name
+        if file_temp.exists() and file_temp.is_file():
+            os.remove(file_temp)
+
         # crear una copia del directorio en temp
         origen_folder = self.path_parent.parent / self.path_parent.stem
         shutil.copytree(origen_folder, self.temp_dir)
 
-        # Crear archivo temporal de backup
-        file_temp = self.temp_dir.parent / self.path_parent.name
-        if file_temp.exists():
-            os.remove(file_temp)
 
+        # Crear archivo temporal de backup
         if self.path_parent.is_file():
             with open(self.path_parent, "rb") as rf, open(file_temp, "wb") as wf:
                 wf.write(rf.read())
         else:
             with open(file_temp, "wb") as wf:
-                wf.write()
+                wf.write(bytearray())
 
         # Invertir orden de paths
         sort_paths.reverse()
