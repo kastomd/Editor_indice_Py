@@ -23,10 +23,13 @@ from app_md.windows.extract_tool import ExtractTool
 import os
 import shutil
 
+from app_md.windows.utils import hide_user
+
+
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260214"
+        self.version = "1.20260314"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
@@ -173,7 +176,7 @@ class BaseApp:
         # Si se obtuvo un archivo valido (arrastrado o desde dialogo)
         if file_path:
             self.path_iso = Path(file_path)
-            self.window.label.setPlainText(file_path)
+            self.window.label.setPlainText(hide_user(file_path))
             self.window.success_dialog(vaule=["File loaded"])
 
     def close_iso(self, view=True):
@@ -240,7 +243,7 @@ class MainWindow(QMainWindow):
         self.thread_pool = QThreadPool()
 
         self.setWindowTitle(f"Editor indice tag team - v:{self.version}")
-        self.setFixedSize(550, 280)
+        self.setFixedSize(550, 310)
         self.setWindowIcon(QIcon(str(self.icon_path)))
 
         # acepta drop
@@ -275,6 +278,11 @@ class MainWindow(QMainWindow):
         self.ischeckbox_wavs = False
         self.checkbox_wavs = QCheckBox("Process WAV files to AT3", self)
         self.checkbox_wavs.stateChanged.connect(self.on_state_checbox_wavs)
+
+        self.ischeckbox_renamer_iso = True
+        self.checkbox_renamer_iso = QCheckBox("Renamer", self)
+        self.checkbox_renamer_iso.setChecked(True)
+        self.checkbox_renamer_iso.stateChanged.connect(self.on_state_checbox_renamer_iso)
         # self.checkbox_opcion2 = QCheckBox("Usar compresión avanzada", self)
 
         layout = QVBoxLayout()
@@ -285,6 +293,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.boton_compiso)
         layout.addWidget(self.label)
         layout.addWidget(self.checkbox_wavs)
+        layout.addWidget(self.checkbox_renamer_iso)
         # layout.addWidget(self.checkbox_opcion2)
 
         # Asignar el layout al widget central
@@ -292,6 +301,9 @@ class MainWindow(QMainWindow):
 
     def on_state_checbox_wavs(self, state):
         self.ischeckbox_wavs = (state == Qt.Checked)
+
+    def on_state_checbox_renamer_iso(self, state):
+        self.ischeckbox_renamer_iso = (state == Qt.Checked)
 
     def dragEnterEvent(self, event):
         # verifica si lo arrastrado son archivos

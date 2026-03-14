@@ -12,6 +12,8 @@ from app_md.logic_extr.data_file_manager import DataFileManager
 from app_md.logic_extr.data_convert import DataConvert
 from app_md.logic_iso.worker import Worker
 from app_md.windows.name_list_editor import NameListEditor
+from app_md.windows.utils import hide_user
+
 
 class ExtractTool(QDialog):
     def __init__(self, window=None):
@@ -33,7 +35,7 @@ class ExtractTool(QDialog):
         self.setWindowIcon(self.contenedor.windowIcon())
         self.setFont(self.contenedor.font())
         self.setWindowTitle(f"Extract tool - v:{self.contenedor.version}")
-        self.setFixedSize(430, 370)
+        self.setFixedSize(500, 380)
 
         # Layout principal
         layout = QVBoxLayout()
@@ -108,6 +110,7 @@ class ExtractTool(QDialog):
         self.ischeckbox_subdirec = False
         self.ischeckbox_narut = False
         self.ischeckbox_anims = False
+        self.ischeckbox_renamer = True
 
          # Layout para los checkboxes en 2 filas y 2 columnas
         checkboxes_layout = QGridLayout()
@@ -129,11 +132,16 @@ class ExtractTool(QDialog):
         self.proccess_anims_checkbox = QCheckBox("Process anims")
         self.proccess_anims_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_anims)
 
+        self.renamer_files_checkbox = QCheckBox("Renamer")
+        self.renamer_files_checkbox.setChecked(True)
+        self.renamer_files_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_renamer)
+
         checkboxes_layout.addWidget(self.pad_to_16_checkbox, 0, 0)
         checkboxes_layout.addWidget(self.proces_wav_checkbox, 0, 1)
         checkboxes_layout.addWidget(self.sub_directorios_checkbox, 1, 0)
         checkboxes_layout.addWidget(self.pphd_narut_checkbox, 1, 1)
         checkboxes_layout.addWidget(self.proccess_anims_checkbox,2, 0)
+        checkboxes_layout.addWidget(self.renamer_files_checkbox, 2, 1)
 
         layout.addLayout(checkboxes_layout)
 
@@ -157,6 +165,9 @@ class ExtractTool(QDialog):
         
     def on_pad_checkbox_changed_anims(self, state):
         self.ischeckbox_anims = (state == Qt.Checked)
+
+    def on_pad_checkbox_changed_renamer(self, state):
+        self.ischeckbox_renamer = (state == Qt.Checked)
 
     def extract_file(self):
         self.setEnabled(False)
@@ -313,7 +324,7 @@ class ExtractTool(QDialog):
         if file_path:
             self.path_file = Path(file_path)
             f_der = "folder" if self.path_file.is_dir() else "file"
-            self.drop_label.setText(f"{f_der}: {file_path}")
+            self.drop_label.setText(f"{f_der}: {hide_user(file_path)}")
             self.contenedor.success_dialog([f"{f_der} opened"])
 
     def show_extract(self):

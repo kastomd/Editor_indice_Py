@@ -2,3 +2,5 @@
 PyQt5
 qdarkstyle
 soundfile
+numpy
+pillow
