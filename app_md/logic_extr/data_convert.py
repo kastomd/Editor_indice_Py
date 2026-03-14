@@ -156,7 +156,7 @@ class DataConvert():
                 f.write(previewtxt)
 
         # verificar renamer
-        if self.content.exRenamer.exRem.check_type(key=bytes.fromhex(self.content.datafilemanager.entry.get("key"))[0:4]) == True:
+        if self.content.ischeckbox_renamer and self.content.exRenamer.exRem.check_type(key=bytes.fromhex(self.content.datafilemanager.entry.get("key"))[0:4]) == True:
             self.content.exRenamer.exRem.organize_and_rename_files(paths_files=paths_list)
             self.content.datafilemanager.entry["rename"] = True
             self.content.datafilemanager.data = json.dumps(self.content.datafilemanager.entry, indent=4)

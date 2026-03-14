@@ -12,6 +12,8 @@ from app_md.logic_extr.data_file_manager import DataFileManager
 from app_md.logic_extr.data_convert import DataConvert
 from app_md.logic_iso.worker import Worker
 from app_md.windows.name_list_editor import NameListEditor
+from app_md.windows.utils import hide_user
+
 
 class ExtractTool(QDialog):
     def __init__(self, window=None):
@@ -33,7 +35,7 @@ class ExtractTool(QDialog):
         self.setWindowIcon(self.contenedor.windowIcon())
         self.setFont(self.contenedor.font())
         self.setWindowTitle(f"Extract tool - v:{self.contenedor.version}")
-        self.setFixedSize(430, 370)
+        self.setFixedSize(500, 380)
 
         # Layout principal
         layout = QVBoxLayout()
@@ -108,6 +110,7 @@ class ExtractTool(QDialog):
         self.ischeckbox_subdirec = False
         self.ischeckbox_narut = False
         self.ischeckbox_anims = False
+        self.ischeckbox_renamer = True
 
          # Layout para los checkboxes en 2 filas y 2 columnas
         checkboxes_layout = QGridLayout()
@@ -129,11 +132,16 @@ class ExtractTool(QDialog):
         self.proccess_anims_checkbox = QCheckBox("Process anims")
         self.proccess_anims_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_anims)
 
+        self.renamer_files_checkbox = QCheckBox("Renamer")
+        self.renamer_files_checkbox.setChecked(True)
+        self.renamer_files_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_renamer)
+
         checkboxes_layout.addWidget(self.pad_to_16_checkbox, 0, 0)
         checkboxes_layout.addWidget(self.proces_wav_checkbox, 0, 1)
         checkboxes_layout.addWidget(self.sub_directorios_checkbox, 1, 0)
         checkboxes_layout.addWidget(self.pphd_narut_checkbox, 1, 1)
         checkboxes_layout.addWidget(self.proccess_anims_checkbox,2, 0)
+        checkboxes_layout.addWidget(self.renamer_files_checkbox, 2, 1)
 
         layout.addLayout(checkboxes_layout)
 
@@ -158,12 +166,15 @@ class ExtractTool(QDialog):
     def on_pad_checkbox_changed_anims(self, state):
         self.ischeckbox_anims = (state == Qt.Checked)
 
+    def on_pad_checkbox_changed_renamer(self, state):
+        self.ischeckbox_renamer = (state == Qt.Checked)
+
     def extract_file(self):
         self.setEnabled(False)
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         if not self.path_file:
-            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!", parent=self)
             return
         
         #crear una tarea asincrona
@@ -178,7 +189,7 @@ class ExtractTool(QDialog):
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
         if not self.path_file:
-            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!")
+            self.contenedor.success_dialog(vaule=["open a file first"],title="Warning!", parent=self)
             return
 
         # crear una tarea asincrona
@@ -213,6 +224,10 @@ class ExtractTool(QDialog):
                 if elemento.is_file() and ".unk" in elemento.name:
                     paths.append(elemento)
 
+        # agrega extension si no la tiene
+        if not self.path_file.suffix:
+            self.path_file = self.path_file.with_name(self.path_file.name + ".unk")
+
         self.path_parent = Path(self.path_file)
         paths = []
         folder_root = self.path_parent.parent / f"compress_{self.path_parent.name}"
@@ -230,21 +245,23 @@ class ExtractTool(QDialog):
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir) # eliminar directoria en temp
 
+        # elimina el archivo temp si existe
+        file_temp = self.temp_dir.parent / self.path_parent.name
+        if file_temp.exists() and file_temp.is_file():
+            os.remove(file_temp)
+
         # crear una copia del directorio en temp
         origen_folder = self.path_parent.parent / self.path_parent.stem
         shutil.copytree(origen_folder, self.temp_dir)
 
-        # Crear archivo temporal de backup
-        file_temp = self.temp_dir.parent / self.path_parent.name
-        if file_temp.exists():
-            os.remove(file_temp)
 
+        # Crear archivo temporal de backup
         if self.path_parent.is_file():
             with open(self.path_parent, "rb") as rf, open(file_temp, "wb") as wf:
                 wf.write(rf.read())
         else:
             with open(file_temp, "wb") as wf:
-                wf.write()
+                wf.write(bytearray())
 
         # Invertir orden de paths
         sort_paths.reverse()
@@ -307,7 +324,7 @@ class ExtractTool(QDialog):
         if file_path:
             self.path_file = Path(file_path)
             f_der = "folder" if self.path_file.is_dir() else "file"
-            self.drop_label.setText(f"{f_der}: {file_path}")
+            self.drop_label.setText(f"{f_der}: {hide_user(file_path)}")
             self.contenedor.success_dialog([f"{f_der} opened"])
 
     def show_extract(self):

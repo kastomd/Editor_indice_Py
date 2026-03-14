@@ -3,8 +3,8 @@ from PyQt5.QtWidgets import QDialog, QLabel, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
 
 class Open_folder_link(QDialog):
-    def __init__(self, parent_font=None, parent_icon=None, direc="", messag=""):
-        super().__init__()
+    def __init__(self, parent=None, parent_font=None, parent_icon=None, direc="", messag=""):
+        super().__init__(parent)
         #directorio de la carpeta
         self.direc = direc
         #mensaje personalizado
@@ -48,3 +48,25 @@ class Open_folder_link(QDialog):
 
     def on_ok_clicked(self):
         self.close()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+
+        if self.parent():
+            self.adjustSize()
+
+            parent_rect = self.parent().rect()
+            parent_center = self.parent().mapToGlobal(parent_rect.center())
+
+            dialog_rect = self.rect()
+            dialog_rect.moveCenter(parent_center)
+
+            self.move(dialog_rect.topLeft())
+        else:
+            from PyQt5.QtWidgets import QApplication
+            screen = QApplication.primaryScreen().availableGeometry()
+            self.move(
+                (screen.width() - self.width()) // 2,
+                (screen.height() - self.height()) // 2
+            )
+

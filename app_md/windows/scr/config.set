@@ -1,5 +1,7 @@
 ﻿{
 	"000001F1": "patch.txt",
+	"0000003F": "menu_stroy_mode_pack.txt",
+	"0000000B": "05_effect_common.txt",
 	"50505641": {
 		"97":"sfx_ch.txt",
 		"85":"sfx_bt.txt"

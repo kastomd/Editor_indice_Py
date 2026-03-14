@@ -42,9 +42,11 @@ class DataFileManager():
             b"\x50\x50\x48\x44": {"row": 2, "star": 0x10, "fill":b'\xff', "ispair": False},
             b"\x64\x00": {"star": 0x48, "eoinx": False, "ispair": False, "data":"txt"},
             b"\x50\x50\x56\x41": {"star": 0x20, "data":"vag", "fill":b'\xff'},
-            b"\x02\x00\x00\x00": {"row": 0}
+            b"\x02\x00\x00\x00": {"row": 0},
+            b"\x00\x00\x00\x19": {"row": 1},
+            b"\x00\x00\x00\x3B": {"row": 0}
         }
-
+# row cantidad de filas de rellena antes de los datos
 
         self.entry = {
             "key": "00",#key inicial del archivo, tambien contiene datos desconocidos de los txt
@@ -52,7 +54,7 @@ class DataFileManager():
             "pad_offset": True,#indica si los offsets terminan en la columna 16, se rellena con 00 hasta esa columna
             "ispair": True, #indica si el ultimo offset marca hasta el final del archivo
             "fill": '00', #tipo de relleno y marcar posible stop en lectura de indices
-            "rename": False
+            "rename": False # indica si tiene renombrado de archivos
         }
 
         self.data = None # data json

@@ -62,7 +62,7 @@ class DataFileManager():
         res = 'export_task finished <a href="#">open folder</a>'
         xDat = 0
         path_list_rename = get_base_path() / "scr" / "LISTA_PACKFILE.txt"
-        index_list = build_packfile_index(path_list_rename)
+        index_list = build_packfile_index(path_list_rename) if self.contenedor.contenedor.window.ischeckbox_renamer_iso else {"":""}
 
         #leer y guardar los archivos
         with open(self.contenedor.contenedor.path_iso, "rb") as f_iso:
