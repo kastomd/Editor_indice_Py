@@ -1,13 +1,16 @@
-﻿from pathlib import Path
-
+﻿import tempfile
+import numpy as np
+from pathlib import Path
 import struct
 import subprocess
 import sys
 import os
 import re
+from scipy.io import wavfile
+from scipy.signal import resample_poly
 
 class VAGHeader:
-    def __init__(self, data_size:int=0, sample_rate:int=0, name:str="1"):
+    def __init__(self, parent=None, data_size:int=0, sample_rate:int=0, name:str="1"):
         """
         Crea un header VAGp.
 
@@ -15,6 +18,7 @@ class VAGHeader:
         :param sample_rate: Frecuencia de muestreo en Hz (int, ej 44100)
         :param name: Nombre del archivo (max 16 bytes, se trunca o rellena)
         """
+        self.parent = parent
         self.magic = b'VAGp'                    # 4 bytes
         self.version = 0x00000003               # 4 bytes
         self.reserved1 = 0x00000000             # 4 bytes
@@ -81,7 +85,50 @@ class VAGHeader:
 
         if result.returncode != 0:
             raise ValueError(f"Error converting \"{vag_path.name}\":\n{result.stderr}")
-        
+
+        # cambia la velocidad del audio .wav a 0.5 si lo requiere
+        if not is_vag and "_m_" in vag_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
+            try:
+                # 0.5x velocidad + pitch más grave
+                sr, data = wavfile.read(wav_path)
+
+                data_float = data.astype(np.float32) / 32768.0
+
+                data_slow = resample_poly(
+                    data_float,
+                    up=2,
+                    down=1,
+                    window=('kaiser', 8.0)
+                ) if self.parent.ischeckbox_audio_filter else resample_poly(
+                    data_float,
+                    up=2,
+                    down=1
+                )
+
+                if self.parent.ischeckbox_audio_filter:
+                    # ajusta los picos
+                    peak = max(abs(data_slow.max()), abs(data_slow.min()))
+                    if peak > 0:
+                        data_slow = (data_slow / peak) * 0.95
+
+                data_out = (data_slow * 32767).astype(np.int16)
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                    temp_path = tmp.name
+
+                wavfile.write(temp_path, sr, data_out)
+
+                # reemplazo seguro
+                os.replace(temp_path, str(wav_path))
+                print(f"SPEED 0.5 - 44100hz: {wav_path.name}")
+
+            except Exception as e:
+                # limpieza por si falla antes del replace
+                if 'temp_path' in locals() and os.path.exists(temp_path):
+                    os.remove(temp_path)
+
+                raise ValueError(f"Error speed 0.5x \"{wav_path.name}\":\n{e}")
+
         return f"Success: {wav_path.name}"
 
     def convert_wav_to_vag(self, wav_path: Path, force_loop=False, no_force_loop=False):

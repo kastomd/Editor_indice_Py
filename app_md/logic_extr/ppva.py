@@ -118,7 +118,7 @@ class PPVA:
     def _load_wav_loop_metadata(self, folder):
         metadata_path = folder / "metadato_for_wav.json"
         if metadata_path.exists():
-            with open(metadata_path, "r") as f:
+            with open(metadata_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return None
 
@@ -294,7 +294,7 @@ class PPVA:
         return out_dir
 
     def _save_config(self, folder):
-        with open(folder / "config.set", "w") as f:
+        with open(folder / "config.set", "w", encoding="utf-8") as f:
             f.write(self.content.datafilemanager.data)
 
     def _extract_vag_files(self, entries, container_data, folder, endian):
@@ -322,5 +322,5 @@ class PPVA:
             info = self.vag_header.get_audio_info(f, False)
             if info:
                 metadata[f.name] = info
-        with open(folder / "metadato_for_wav.json", "w") as f:
+        with open(folder / "metadato_for_wav.json", "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=4)

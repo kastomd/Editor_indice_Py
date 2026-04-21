@@ -168,7 +168,7 @@ class DataConvert():
                     self.Tanm.batch_convert_tanm_anm(folder_path=name_folder_anims, ext="tanm")
 
         # Guardar configuracion
-        with open(output_path / "config.set", "w") as cf:
+        with open(output_path / "config.set", "w", encoding="utf-8") as cf:
             cf.write(self.content.datafilemanager.data)
 
         self.bytes_file = None

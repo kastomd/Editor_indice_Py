@@ -1,11 +1,13 @@
-﻿from pprint import pprint
+﻿import msvcrt
+from pprint import pprint
 import sys
 import traceback
 import qdarkstyle
 import winreg
 
 
-from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, \
+    QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget, QGridLayout
 from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QKeySequence, QPixmap
 from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
@@ -29,7 +31,7 @@ from app_md.windows.utils import hide_user
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260314"
+        self.version = "1.20260421"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
@@ -256,14 +258,17 @@ class MainWindow(QMainWindow):
         self.edit_lb_pack = QLineEdit(self)
         self.edit_lb_pack.setText("/PSP_GAME/USRDIR/PACKFILE.BIN")
         self.edit_lb_pack.setPlaceholderText("path PACKFILE.BIN")
+        self.edit_lb_pack.setToolTip("path PACKFILE.BIN")
 
         self.edit_lbl_data_size = QLineEdit(self)
         self.edit_lbl_data_size.setText("0x38000")
         self.edit_lbl_data_size.setPlaceholderText("index size")
+        self.edit_lbl_data_size.setToolTip("Indicates the starting position of the first file in the ISO")
 
         self.edit_lbl_files = QLineEdit(self)
         self.edit_lbl_files.setText("0x3711")
         self.edit_lbl_files.setPlaceholderText("number of files")
+        self.edit_lbl_files.setToolTip("number of files")
 
         self.boton_extiso = QPushButton("extract iso", self)
         self.boton_extiso.clicked.connect(self.extract_task)
@@ -274,16 +279,36 @@ class MainWindow(QMainWindow):
         self.label.setReadOnly(True)
         self.label.setLineWrapMode(QPlainTextEdit.NoWrap)
 
+        # Layout para los checkboxes en 2 filas y 2 columnas
+        checkboxes_layout = QGridLayout()
+
         # Checkboxes adicionales
         self.ischeckbox_wavs = False
         self.checkbox_wavs = QCheckBox("Process WAV files to AT3", self)
         self.checkbox_wavs.stateChanged.connect(self.on_state_checbox_wavs)
+        self.checkbox_wavs.setToolTip("Convert all WAV files to AT3 within the extracted ISO folder")
 
         self.ischeckbox_renamer_iso = True
         self.checkbox_renamer_iso = QCheckBox("Renamer", self)
         self.checkbox_renamer_iso.setChecked(True)
         self.checkbox_renamer_iso.stateChanged.connect(self.on_state_checbox_renamer_iso)
+        self.checkbox_renamer_iso.setToolTip("Rename and organize extracted files")
         # self.checkbox_opcion2 = QCheckBox("Usar compresión avanzada", self)
+
+        self.ischeckbox_audio_speed = True
+        self.checkbox_audio_speed = QCheckBox("Adjust audio speed", self)
+        self.checkbox_audio_speed.setChecked(True)
+        self.checkbox_audio_speed.stateChanged.connect(self.on_state_checbox_audio_speed)
+        self.checkbox_audio_speed.setToolTip(
+            "Adjusts the audio speed to the appropriate value if the filename contains _m_")
+
+        self.ischeckbox_audio_filter = True
+        self.checkbox_audio_filter = QCheckBox("Process WAV/AT3 with filter", self)
+        self.checkbox_audio_filter.setChecked(True)
+        self.checkbox_audio_filter.stateChanged.connect(self.on_state_checbox_checkbox_audio_filter)
+        self.checkbox_audio_filter.setToolTip(
+            "Process the audio with an anti-aliasing filter, if the filename contains _m_")
+
 
         layout = QVBoxLayout()
         layout.addWidget(self.edit_lb_pack)
@@ -292,10 +317,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.boton_extiso)
         layout.addWidget(self.boton_compiso)
         layout.addWidget(self.label)
-        layout.addWidget(self.checkbox_wavs)
-        layout.addWidget(self.checkbox_renamer_iso)
+
+        checkboxes_layout.addWidget(self.checkbox_wavs, 0, 0)
+        checkboxes_layout.addWidget(self.checkbox_renamer_iso, 0, 1)
+        checkboxes_layout.addWidget(self.checkbox_audio_speed, 1, 0)
+        checkboxes_layout.addWidget(self.checkbox_audio_filter, 1, 1)
         # layout.addWidget(self.checkbox_opcion2)
 
+        layout.addLayout(checkboxes_layout)
         # Asignar el layout al widget central
         central_widget.setLayout(layout)
 
@@ -304,6 +333,13 @@ class MainWindow(QMainWindow):
 
     def on_state_checbox_renamer_iso(self, state):
         self.ischeckbox_renamer_iso = (state == Qt.Checked)
+
+    def on_state_checbox_audio_speed(self, state):
+        self.ischeckbox_audio_speed = (state == Qt.Checked)
+        self.checkbox_audio_filter.setEnabled(self.ischeckbox_audio_speed)
+
+    def on_state_checbox_checkbox_audio_filter(self, state):
+        self.ischeckbox_audio_filter = (state == Qt.Checked)
 
     def dragEnterEvent(self, event):
         # verifica si lo arrastrado son archivos
@@ -462,6 +498,11 @@ class MainWindow(QMainWindow):
             self.success_dialog(["open a file first"], "Warning!")
             return
 
+        if self.archivo_en_uso(self.contenedor.path_iso):
+            self.manejar_error(
+                f"The file '{self.contenedor.path_iso.name}' is currently in use by another program. Please close it and try again.")
+            return
+
         self.is_bin = packBin
 
         self.setEnabled(False)
@@ -503,9 +544,28 @@ class MainWindow(QMainWindow):
                 self.success_dialog(["Compress operation canceled by the user."])
                 return
 
+            if self.archivo_en_uso(self.name_compress_iso):
+                self.manejar_error(
+                    f"The file '{self.name_compress_iso.name}' is currently in use by another program. Please close it and try again.")
+                return
+
         # importar los archivos a la iso backup
         self.datafilemanager = DataFileManager(self)
         self.datafilemanager.task_import()
+
+    def archivo_en_uso(self, path):
+        try:
+            f = open(path, "r+b")
+            try:
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                f.close()
+                return False
+            except OSError:
+                f.close()
+                return True
+        except:
+            return False
 
     def indexs_import(self, new_indexs):
         self.new_indexs = new_indexs[0]

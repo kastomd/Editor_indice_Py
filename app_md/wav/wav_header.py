@@ -1,11 +1,16 @@
 ﻿import os
+import tempfile
 from pathlib import Path
 import struct
 import subprocess
 import sys
+from scipy.io import wavfile
+from scipy.signal import resample_poly
+import numpy as np
 
 class AT3HeaderBuilder:
-    def __init__(self, data_size=0, sample_rate=44100, channels=2, samples=0, byte_rate=13092):
+    def __init__(self, parent=None, data_size=0, sample_rate=44100, channels=2, samples=0, byte_rate=13092):
+        self.parent = parent
         self.data_size = data_size
         self.sample_rate = sample_rate
         self.channels = channels
@@ -108,6 +113,47 @@ class AT3HeaderBuilder:
     def convert_wav_to_at3(self, wav_path: Path, output_at3_path: Path, bitrate:int=105, loop:bool=False):
         if not wav_path.is_file():
             raise FileNotFoundError(f"WAV file not found: {wav_path}")
+
+        # aplicar el doble de velocidad si lo requiere
+        if "_m_" in wav_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
+            try:
+                sr, data = wavfile.read(wav_path)
+
+                data_float = data.astype(np.float32) / 32768.0
+
+                data_slow = resample_poly(
+                    data_float,
+                    up=1,
+                    down=2,
+                    window=('kaiser', 8.0)
+                ) if self.parent.ischeckbox_audio_filter else resample_poly(
+                    data_float,
+                    up=1,
+                    down=2
+                )
+
+                if self.parent.ischeckbox_audio_filter:
+                    # ajusta los picos
+                    peak = max(abs(data_slow.max()), abs(data_slow.min()))
+                    if peak > 0:
+                        data_slow = (data_slow / peak) * 0.95
+
+                data_out = (data_slow * 32767).astype(np.int16)
+
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                    temp_path = tmp.name
+
+                wavfile.write(temp_path, sr, data_out)
+
+                wav_path = Path(temp_path)
+                print(f"SPEED 2.0 - 44100hz: {wav_path.name}")
+
+            except Exception as e:
+                # limpieza por si falla antes del replace
+                if 'temp_path' in locals() and os.path.exists(temp_path):
+                    os.remove(temp_path)
+
+                raise ValueError(f"Error speed 2.0x \"{wav_path.name}\":\n{e}")
 
         exe_path = self._get_resources_path(Path("tools/psp_atrac3/psp_at3tool.exe"))
         command = [str(exe_path), "-e", "-br", str(bitrate)]
