@@ -57,6 +57,9 @@ In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV 
  
  Make sure your audio is sped up to x2.
  Since version 1.20260421, it is no longer necessary to change the audio speed to 2x when the **Adjust Audio Speed** checkbox is selected.
+ 
+ <img width="206" height="58" alt="image" src="https://github.com/user-attachments/assets/19e91083-7082-49d8-a5dd-b6297b6cae96" />
+
 
  Example:
  ```
@@ -70,6 +73,12 @@ In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV 
  Do not apply this to music, as it will remove the stereo from the audio and make it sound a bit strange.
 
  In Tool > **Add/Remove ```_m_``` to files**, you can add or remove the ```_m_``` from the files you want.
+
+ When **Process Wav/At3 with filter** is enabled, it will apply a filter to prevent aliasing in the audio.
+ 
+ <img width="229" height="58" alt="image" src="https://github.com/user-attachments/assets/c83ee991-881e-48b3-8269-d30f098f02c0" />
+
+
 
 
 ## How to convert VAG to WAV with the extract tool
