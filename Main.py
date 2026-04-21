@@ -12,6 +12,7 @@ if __name__ == "__main__":
     except Exception:
         error_text = traceback.format_exc()
 
+        # carga una ventana temp para mostrar el problema
         temp_app = QApplication.instance()
         if temp_app is None:
             temp_app = QApplication(sys.argv)

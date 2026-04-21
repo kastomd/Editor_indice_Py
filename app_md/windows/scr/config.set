@@ -3,5 +3,7 @@
 	"50505641": {
 		"97":"sfx_ch.txt",
 		"85":"sfx_bt.txt"
-	}
+	},
+	"0000000B": "effect_common.txt",
+	"00000004": "cman.txt"
 }
