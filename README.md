@@ -144,5 +144,41 @@ pip install -r requirements.txt
 
 Then you'll need the CLI tools.
 These are required if you plan to work with audio files; otherwise, you can skip them.
+The links to the CLI tools are located in their corresponding folders: **at3tool**, **vgmstream**, and **AIFF2VAG**.
+
+Finally, run the `Main.py` script.
+
+```
+python Main.py
+```
+
+## How to compile the EXE
+
+Open the command line/terminal and navigate to the root folder of the project (Editor_indice_Py).
+
+To compile this project, it is recommended to use **auto-py-to-exe**.
+
+```
+pip install auto-py-to-exe
+```
+
+Run: 
+```
+python -m auto_py_to_exe
+```
+to start the application
+
+In **Script Location**, select the script `Main.py`.
+
+In **Icon**, select the icon at the path:
+`Editor_indice_Py\app_md\images\icon.ico`
+
+In **Additional Files**, add the following folders:
+
+1. `Editor_indice_Py/app_md`
+2. `Editor_indice_Py/app_md/wav/tools`
+3. `Editor_indice_Py/app_md/logic_extr/tools`
+
+Finally, press **Convert .py to .exe**; this will create the project's executable.
 
 P.S.: Don’t expect to see pro-level code.
