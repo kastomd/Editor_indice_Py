@@ -26,9 +26,9 @@ class DataFileManager():
         self.contenedor = conten
 
         self.thread_pool = QThreadPool()
-        self.at3_header = AT3HeaderBuilder()
+        self.at3_header = AT3HeaderBuilder(self.contenedor)
         self.wavcd = WavCd()
-        self.vagheader = VAGHeader()
+        self.vagheader = VAGHeader(self.contenedor)
 
         self.at3_audios = []
         self.wav_audios = []
@@ -140,24 +140,27 @@ class DataFileManager():
         data_start += size_indexs
 
         # eliminar el _m_ de los unk
-        files_wav = list(self.contenedor.new_folder.glob("*.unk"))
-        for path in files_wav:
-            if "_m_" in path.name.lower():
-
-                new_name = path.name.replace("_m_", "")
-
-                new_path = path.with_name(new_name)
-
-                if new_path.exists():
-                    os.remove(new_path)
-
-                path.rename(new_path)
-                print(f"remove _m_: {new_path.name}")
+        # files_wav = list(self.contenedor.new_folder.glob("*.unk"))
+        # for path in files_wav:
+        #     if "_m_" in path.name.lower():
+        #
+        #         new_name = path.name.replace("_m_", "")
+        #
+        #         new_path = path.with_name(new_name)
+        #
+        #         if new_path.exists():
+        #             os.remove(new_path)
+        #
+        #         path.rename(new_path)
+        #         print(f"remove _m_: {new_path.name}")
 
 
         # procesar los wav a at3
         if self.contenedor.ischeckbox_wavs:
-            files_wav = list(self.contenedor.new_folder.glob("*.wav"))
+            files_wav = list(self.contenedor.new_folder.rglob("*.wav"))
+            print("--------------------------------")
+            print(f"folder: {self.contenedor.new_folder}")
+            print(f"files wav: {files_wav}")
             self.convert_wav16bitPCM_to_at3(files_path=files_wav)
 
         with open(self.contenedor.name_compress_iso, "wb") as f_iso_c:
@@ -230,6 +233,7 @@ class DataFileManager():
 
         # Si se recibe una sola ruta (Path)
         elif isinstance(at3_files, Path):
+            print("--------------------------------")
             at3_path = at3_files
 
             # Leer el contenido del archivo AT3
@@ -280,6 +284,7 @@ class DataFileManager():
 
         # Si se recibe una sola ruta (Path)
         elif isinstance(files_path, Path):
+            print("--------------------------------")
             wav_path = files_path
 
             # Verificar si el archivo es un WAV valido
@@ -296,7 +301,7 @@ class DataFileManager():
                 exit_succ = self.wavcd.convert_to_mono_stereo(input_path=wav_path)
                 print(exit_succ)
                 # quitar el _m_
-                at3_output_path = at3_output_path.parent / at3_output_path.name.replace("_m_", "")
+                # at3_output_path = at3_output_path.parent / at3_output_path.name.replace("_m_", "")
                 ch_one = True
 
             # Realizar la conversion de WAV a AT3

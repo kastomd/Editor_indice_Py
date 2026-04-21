@@ -4,3 +4,4 @@ qdarkstyle
 soundfile
 numpy
 pillow
+scipy

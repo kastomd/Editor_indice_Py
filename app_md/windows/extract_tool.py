@@ -118,23 +118,31 @@ class ExtractTool(QDialog):
         self.pad_to_16_checkbox = QCheckBox("Padding to 16")
         self.pad_to_16_checkbox.setChecked(True)
         self.pad_to_16_checkbox.stateChanged.connect(self.on_pad_checkbox_changed)
+        self.pad_to_16_checkbox.setToolTip("Apply padding to the file up to column 16")
 
         self.proces_wav_checkbox = QCheckBox("Process wav")
         self.proces_wav_checkbox.setChecked(True)
         self.proces_wav_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_wav)
+        self.proces_wav_checkbox.setToolTip("Process WAV files in the folders")
 
         self.sub_directorios_checkbox = QCheckBox("No subfolders")
         self.sub_directorios_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_subdirec)
+        self.sub_directorios_checkbox.setToolTip("If enabled, subfolders are not processed")
 
         self.pphd_narut_checkbox = QCheckBox("PPHD narut")
         self.pphd_narut_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_narut)
+        self.pphd_narut_checkbox.setToolTip(
+            "It is used to extract and compress the PPHD files from *Naruto Ultimate Ninja Impact*")
 
         self.proccess_anims_checkbox = QCheckBox("Process anims")
         self.proccess_anims_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_anims)
+        self.proccess_anims_checkbox.setToolTip("Process the decompressed animations")
 
         self.renamer_files_checkbox = QCheckBox("Renamer")
         self.renamer_files_checkbox.setChecked(True)
         self.renamer_files_checkbox.stateChanged.connect(self.on_pad_checkbox_changed_renamer)
+        self.renamer_files_checkbox.setToolTip(
+            "Apply file renaming and organization if available for the extracted file")
 
         checkboxes_layout.addWidget(self.pad_to_16_checkbox, 0, 0)
         checkboxes_layout.addWidget(self.proces_wav_checkbox, 0, 1)
