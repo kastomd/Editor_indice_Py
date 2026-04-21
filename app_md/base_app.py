@@ -1,4 +1,5 @@
-﻿from pprint import pprint
+﻿import msvcrt
+from pprint import pprint
 import sys
 import traceback
 import qdarkstyle
@@ -30,7 +31,7 @@ from app_md.windows.utils import hide_user
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260314"
+        self.version = "1.20260421"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
@@ -497,6 +498,11 @@ class MainWindow(QMainWindow):
             self.success_dialog(["open a file first"], "Warning!")
             return
 
+        if self.archivo_en_uso(self.contenedor.path_iso):
+            self.manejar_error(
+                f"The file '{self.contenedor.path_iso.name}' is currently in use by another program. Please close it and try again.")
+            return
+
         self.is_bin = packBin
 
         self.setEnabled(False)
@@ -538,9 +544,28 @@ class MainWindow(QMainWindow):
                 self.success_dialog(["Compress operation canceled by the user."])
                 return
 
+            if self.archivo_en_uso(self.name_compress_iso):
+                self.manejar_error(
+                    f"The file '{self.name_compress_iso.name}' is currently in use by another program. Please close it and try again.")
+                return
+
         # importar los archivos a la iso backup
         self.datafilemanager = DataFileManager(self)
         self.datafilemanager.task_import()
+
+    def archivo_en_uso(self, path):
+        try:
+            f = open(path, "r+b")
+            try:
+                msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+                f.close()
+                return False
+            except OSError:
+                f.close()
+                return True
+        except:
+            return False
 
     def indexs_import(self, new_indexs):
         self.new_indexs = new_indexs[0]

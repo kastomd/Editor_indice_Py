@@ -1,6 +1,8 @@
 import os
 import shutil
 import sys
+import tempfile
+
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QFileDialog, QMessageBox,
     QVBoxLayout, QHBoxLayout, QCheckBox, QScrollArea, QComboBox, QFrame,
@@ -11,6 +13,8 @@ from PyQt5.QtCore import Qt
 import qdarkstyle
 
 from pathlib import Path
+
+from app_md.windows.utils import hide_user
 
 BASE_DICC = Path(__file__).parent
 
@@ -345,7 +349,7 @@ class ExVoicesApp(QDialog):
         ruta = QFileDialog.getExistingDirectory(self, "Selecciona carpeta con .unk")
         if ruta:
             self.ruta_unk = ruta
-            QMessageBox.information(self, "Ruta seleccionada", f"Carpeta seleccionada:\n{ruta}")
+            QMessageBox.information(self, "Ruta seleccionada", f"Carpeta seleccionada:\n{hide_user(ruta)}")
             actualizar_lista_personajes(ruta, self.combo_donador, self.combo_receptor)
 
     def iniciar_extraccion(self):
@@ -394,11 +398,101 @@ class ExVoicesApp(QDialog):
         return frame
 
     def realizar_swap(self):
-        base = os.path.join(self.ruta_unk, "Character_Voices") if self.ruta_unk else ""
+        base = Path(self.ruta_unk, "Character_Voices") if self.ruta_unk else ""
         if not base or not os.path.exists(base):
             QMessageBox.critical(self, "Error", "Selecciona primero la carpeta con los .unk")
             return
-        realizar_swap(self.combo_donador, self.combo_receptor, base)
+        self._realizar_swap(base)
+
+
+    def _realizar_swap(self, base):
+        donador = self.combo_donador.currentText()
+        receptor = self.combo_receptor.currentText()
+
+        if not donador or not receptor:
+            QMessageBox.critical(self, "Error", "Debes seleccionar ambas carpetas")
+            return
+
+        if donador == receptor:
+            QMessageBox.critical(self, "Error", "El donador y receptor no pueden ser iguales")
+            return
+
+        carpeta_donador = Path(base, donador)
+        carpeta_receptor = Path(base, receptor)
+
+        if not carpeta_donador.exists() or not carpeta_receptor.exists():
+            QMessageBox.critical(self, "Error", "Una o ambas carpetas no existen")
+            return
+
+        self.intercambiar_carpetas(carpeta_donador, carpeta_receptor)
+
+
+    def intercambiar_carpetas(self, dir1, dir2):
+        archivos1 = sorted(os.listdir(dir1))
+        archivos2 = sorted(os.listdir(dir2))
+
+        # Validación: ambas deben tener 126 archivos
+        if len(archivos1) != 126 or len(archivos2) != 126:
+            QMessageBox.critical(self, "Error", "Ambas carpetas deben tener exactamente 126 archivos")
+            return
+
+        # Crear carpeta temporal
+        with tempfile.TemporaryDirectory() as temp_dir:
+
+            # Mover carpeta1 → temp
+            for archivo in archivos1:
+                shutil.move(os.path.join(dir1, archivo),
+                            os.path.join(temp_dir, archivo))
+
+            # Mover carpeta2 → carpeta1
+            for archivo in archivos2:
+                shutil.move(os.path.join(dir2, archivo),
+                            os.path.join(dir1, archivo))
+
+            # Mover temp → carpeta2
+            for archivo in os.listdir(temp_dir):
+                shutil.move(os.path.join(temp_dir, archivo),
+                            os.path.join(dir2, archivo))
+
+        self.intercambiar_nombres_completos(dir1, dir2)
+
+    def intercambiar_nombres_completos(self, dir1, dir2):
+        def obtener_ordenados(d):
+            archivos = []
+            for f in os.listdir(d):
+                try:
+                    num = int(f.split("_")[0])
+                    archivos.append((num, f))
+                except:
+                    pass
+            archivos.sort(key=lambda x: x[0])
+            return [f for _, f in archivos]
+
+        lista1 = obtener_ordenados(dir1)
+        lista2 = obtener_ordenados(dir2)
+
+        if len(lista1) != len(lista2):
+            QMessageBox.critical(self, "Error", "Cantidad de archivos distinta")
+            return
+
+        # Paso 1: agregar sufijo temporal (simple)
+        for f in lista1:
+            os.rename(os.path.join(dir1, f),
+                      os.path.join(dir1, f + ".swap"))
+
+        for f in lista2:
+            os.rename(os.path.join(dir2, f),
+                      os.path.join(dir2, f + ".swap"))
+
+        # Paso 2: intercambiar nombres usando las listas
+        for f1, f2 in zip(lista1, lista2):
+            os.rename(os.path.join(dir1, f1 + ".swap"),
+                      os.path.join(dir1, f2))
+
+            os.rename(os.path.join(dir2, f2 + ".swap"),
+                      os.path.join(dir2, f1))
+
+        QMessageBox.information(self, "Exitoso", "Se realizo el swap correctamente")
 
 # FUNCIONES AUXILIARES COMPATIBLES CON PyQt5
 
@@ -411,37 +505,3 @@ def actualizar_lista_personajes(ruta_unk, combo_donador, combo_receptor):
     combo_receptor.clear()
     combo_donador.addItems(personajes)
     combo_receptor.addItems(personajes)
-
-def realizar_swap(combo_donador, combo_receptor, base):
-    donador = combo_donador.currentText()
-    receptor = combo_receptor.currentText()
-
-    if not donador or not receptor:
-        QMessageBox.critical(None, "Error", "Debes seleccionar ambas carpetas")
-        return
-
-    if donador == receptor:
-        QMessageBox.critical(None, "Error", "El donador y receptor no pueden ser iguales")
-        return
-
-    carpeta_donador = os.path.join(base, donador)
-    carpeta_receptor = os.path.join(base, receptor)
-
-    if not os.path.isdir(carpeta_donador) or not os.path.isdir(carpeta_receptor):
-        QMessageBox.critical(None, "Error", "Una o ambas carpetas no existen")
-        return
-
-    errores = []
-    for archivo in os.listdir(carpeta_donador):
-        origen = os.path.join(carpeta_donador, archivo)
-        destino = os.path.join(carpeta_receptor, archivo)
-        try:
-            shutil.copy2(origen, destino)
-        except Exception as e:
-            errores.append(f"{archivo}: {e}")
-
-    if errores:
-        QMessageBox.warning(None, "Swap con errores", "\n".join(errores))
-    else:
-        QMessageBox.information(None, "Swap exitoso", f"Audios de '{donador}' copiados en '{receptor}'")
-
