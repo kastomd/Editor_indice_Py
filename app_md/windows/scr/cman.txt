@@ -1,0 +1,5 @@
+1_cman:
+1-1: 00_camera.cma
+2-2: 01_camera.cma
+3-3: 02_camera.cma
+4-4: 03_camera.cma

@@ -1,0 +1,118 @@
+﻿1_Hits_Impacts_Guards_Whiffed:
+1-1: 00_missed_hit_1.vag
+2-2: 01_missed_hit_2.vag
+3-3: 02_hit_impact_1.vag
+4-4: 03_hit_impact_2.vag
+5-5: 04_guarded_hit_1.vag
+6-6: 05_guarded_hit_2.vag
+7-7: 06_strong_whiffed hit_1.vag
+8-8: 07_strong_whiffed hit_2.vag
+9-9: 08_strong_whiffed hit_3.vag
+10-A: 09_strong_hit_impact_1.vag
+11-B: 10_strong_hit_impact_2.vag
+
+2_Falls_Landings:
+12-C: 11_land_soft.vag
+13-D: 12_land_hard.vag
+14-E: 13_empty.vag
+
+3_Ki_Blast_Shots:
+15-F: 14_ki_blast_fire_1.vag
+16-10: 15_ki_blast_fire_2.vag
+17-11: 16_ki_blast_fire_3.vag
+18-12: 17_ki_blast_hit.vag
+
+4_Effects_Paralysis_Generic_Impact:
+19-13: 18_paralysis.vag
+20-14: 19_impact_1.vag
+21-15: 20_impact_2.vag
+
+5_Ki_Charge:
+22-16: 21_ki_charging_in.vag
+23-17: 22_ki_charging_loop.vag
+24-18: 23_ki_charging_out.vag
+
+6_Air_Movements_Getting_Up:
+25-19: 24_ascend.vag
+26-1A: 25_land_hard.vag
+27-1B: 26_getup_heavy.vag
+28-1C: 27_ki_hit.vag
+
+7_Movement_Flight_Teleportation:
+29-1D: 28_dash_1.vag
+30-1E: 29_dash_2.vag
+31-1F: 30_fly_faster.vag
+32-20: 31_getup.vag
+33-21: 32_teleportation.vag
+
+8_Body_Shift_Physical_Techniques:
+34-22: 33_body_shift_1.vag
+35-23: 34_body_shift_2.vag
+36-24: 35_empty.vag
+
+9_Stomping:
+37-25: 36_stomp_1.vag
+38-26: 37_stomp_2.vag
+39-27: 38_stomp_3.vag
+40-28: 39_empty.vag
+
+10_Airdrops:
+41-29: 40_aerial_launch_1.vag
+42-2A: 41_aerial_launch_2.vag
+43-2B: 42_aerial_launch_3.vag
+
+11_Skills_Reactions:
+44-2C: 43_skill_in.vag
+45-2D: 44_shock_gasp.vag
+46-2E: 45_empty.vag
+47-2F: 46_charge_strike.vag
+48-30: 47_empty.vag
+49-31: 48_empty.vag
+
+12_Jumps:
+50-32: 49_jump_start.vag
+51-33: 50_jump_land_1.vag
+52-34: 51_jump_land_2.vag
+53-35: 52_empty.vag
+54-36: 53_empty.vag
+
+13_Dodges_Special_Moves:
+55-37: 54_blast_charge_1.vag
+56-38: 55_blast_charge_2.vag
+57-39: 56_dodge_1.vag
+58-3A: 57_dodge_2.vag
+59-3B: 58_hit_and_throw.vag
+
+14_Flight:
+60-3C: 59_fly_launch.vag
+61-3D: 60_fly_away.vag
+62-3E: 61_empty.vag
+
+15_Ki_Charging_BU:
+63-3F: 62_ki_charging_bu_in.vag
+64-40: 63_ki_charging_bu_loop.vag
+65-41: 64_ki_charging_bu_out.vag
+
+16_Special Effects:
+66-42: 65_skill_charge.vag
+67-43: 66_hit_metal.vag
+68-44: 67_revive_senzu.vag
+69-45: 68_hit_light.vag
+70-46: 69_hit_heavy_1.vag
+71-47: 70_hit_heavy_2.vag
+72-48: 71_impact_burst_1.vag
+73-49: 72_throw.vag
+74-4A: 73_hit_heavy_3.vag
+75-4B: 74_impact_burst_2.vag
+
+17_Skills_Shooting_Events:
+76-4C: 75_skill_in.vag
+77-4D: 76_jingle_event.vag
+78-4E: 77_skill_charge.vag
+79-4F: 78_skill_fire_1.vag
+80-50: 79_skill_fire_2.vag
+81-51: 80_skill_fire_3.vag
+82-52: 81_skill_loop.vag
+83-53: 82_skill_out.vag
+84-54: 83_skill_fire_4.vag
+85-55: 84_skill_aura_loop.vag

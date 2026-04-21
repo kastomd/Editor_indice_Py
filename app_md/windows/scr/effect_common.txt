@@ -1,0 +1,12 @@
+1_effect_common:
+1-1: 00_common_param.dat
+2-2: 01_charge_aura.pak
+3-3: 02_kidan.pak
+4-4: 03_charge_kidan.pak
+5-5: 04_unused.pak
+6-6: 05_ki_wave.pak
+7-7: 06_energy_wave.pak
+8-8: 07_skill_cameras.pak
+9-9: 08_jetpack.pak
+10-A: 09_unused.pak
+11-B: 10_absorb.pak
