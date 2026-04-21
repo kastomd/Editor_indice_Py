@@ -305,7 +305,7 @@ class PPVA:
             end = int.from_bytes(raw_len, endian) if raw_len not in [b'\xD0\xFF\xFF\xFF', b'\xFF\xFF\xFF\xFF'] else 0
             end += start
 
-            self.vag_header = VAGHeader(end - start, freq, f"{i}-{i:X}")
+            self.vag_header = VAGHeader(data_size=end - start, sample_rate=freq, name=f"{i}-{i:X}")
             out_file = folder / f"{i}-{i:X}.vag"
             data = container_data[start:end] or b'\x00' * 0x10
             out_file.write_bytes(self.vag_header.build() + data)
