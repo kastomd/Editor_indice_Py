@@ -56,6 +56,7 @@ In Tenkaichi Tag Team, the game loops the music automatically. Even if your WAV 
  In your .wav file, add ```_m_``` at the end of the name, then continue compressing the ISO. The audio will automatically adapt for story mode or character mode
  
  Make sure your audio is sped up to x2.
+ Since version 1.20260421, it is no longer necessary to change the audio speed to 2x when the **Adjust Audio Speed** checkbox is selected.
 
  Example:
  ```
