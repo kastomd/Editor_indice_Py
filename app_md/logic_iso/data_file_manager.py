@@ -1,5 +1,6 @@
 ﻿# import json
 import os
+import struct
 import sys
 from pathlib import Path
 import tempfile
@@ -206,6 +207,25 @@ class DataFileManager():
                     offset += len(content)
 
             new_indexs = [new_indexs, False]
+
+
+            # actualiza el size del packfile
+            posi_dir_record = self.contenedor.index_Packfile[2]
+            if not self.contenedor.is_bin and posi_dir_record:
+                f_iso_c.seek(0, 2)  # ir al final
+                size_packfile = f_iso_c.tell() - self.contenedor.index_Packfile[0]
+                f_iso_c.seek(posi_dir_record + 10)
+
+                size_iso_bytes = bytearray()
+                # Data Length (LE)
+                size_iso_bytes += struct.pack("<I", size_packfile)
+                # Data Length (BE)
+                size_iso_bytes += struct.pack(">I", size_packfile)
+                f_iso_c.write(size_iso_bytes)
+                f_iso_c.seek(0, 2)  # ir al final
+
+                print(f"Offset size packfile: {posi_dir_record + 10}")
+                print(f"size_iso: {size_packfile:X}")
 
             # Escribir leftover.unk si existe
             path_file = self.contenedor.new_folder / "leftover.unk"
