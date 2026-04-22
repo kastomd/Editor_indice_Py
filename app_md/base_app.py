@@ -263,7 +263,7 @@ class MainWindow(QMainWindow):
         self.edit_lbl_data_size = QLineEdit(self)
         self.edit_lbl_data_size.setText("0x38000")
         self.edit_lbl_data_size.setPlaceholderText("index size")
-        self.edit_lbl_data_size.setToolTip("Indicates the starting position of the first file in the ISO")
+        self.edit_lbl_data_size.setToolTip("Indicates the header size of the packfile")
 
         self.edit_lbl_files = QLineEdit(self)
         self.edit_lbl_files.setText("0x3711")
