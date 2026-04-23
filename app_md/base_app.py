@@ -31,7 +31,7 @@ from app_md.windows.utils import hide_user
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260421"
+        self.version = "1.20260423-test"
         
         #icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
