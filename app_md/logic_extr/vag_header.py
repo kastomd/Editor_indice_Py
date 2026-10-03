@@ -8,6 +8,8 @@ import os
 import re
 from scipy.io import wavfile
 from scipy.signal import resample_poly
+from app_md.wav.wav_header import AT3HeaderBuilder
+
 
 class VAGHeader:
     def __init__(self, parent=None, data_size:int=0, sample_rate:int=0, name:str="1"):
@@ -71,7 +73,7 @@ class VAGHeader:
             creationflags=creation_flags
         )
 
-    def convert_vag_to_wav(self, vag_path: Path, wav_path: Path, is_vag:bool=True):
+    def convert_vag_to_wav(self, vag_path: Path, wav_path: Path, is_vag:bool=True, force_speed:bool=False):
         if not vag_path.is_file():
             raise FileNotFoundError(f"VAG file not found: {vag_path}")
 
@@ -87,37 +89,13 @@ class VAGHeader:
             raise ValueError(f"Error converting \"{vag_path.name}\":\n{result.stderr}")
 
         # cambia la velocidad del audio .wav a 0.5 si lo requiere
-        if not is_vag and "_m_" in vag_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
+        if force_speed or not is_vag and "_m_" in vag_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
             try:
                 # 0.5x velocidad + pitch más grave
-                sr, data = wavfile.read(wav_path)
-
-                data_float = data.astype(np.float32) / 32768.0
-
-                data_slow = resample_poly(
-                    data_float,
-                    up=2,
-                    down=1,
-                    window=('kaiser', 8.0)
-                ) if self.parent.ischeckbox_audio_filter else resample_poly(
-                    data_float,
-                    up=2,
-                    down=1
-                )
-
-                if self.parent.ischeckbox_audio_filter:
-                    # ajusta los picos
-                    peak = max(abs(data_slow.max()), abs(data_slow.min()))
-                    if peak > 0:
-                        data_slow = (data_slow / peak) * 0.95
-
-                data_out = (data_slow * 32767).astype(np.int16)
-
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                     temp_path = tmp.name
 
-                wavfile.write(temp_path, sr, data_out)
-
+                AT3HeaderBuilder.cambiar_velocidad_tono(input_path=str(wav_path), output_path=temp_path, factor=0.5)
                 # reemplazo seguro
                 os.replace(temp_path, str(wav_path))
                 print(f"SPEED 0.5 - 44100hz: {wav_path.name}")

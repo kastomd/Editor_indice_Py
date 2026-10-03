@@ -182,7 +182,10 @@ class DataFileManager():
             for file_number in range(1, num_files + 1):
                 # obtener renamex
                 rename_filee = f"{file_number}_{file_number:X}.unk"
-                rename_filee = get_real_path(rename_filee, index_list)
+                #comprobar si esta activo rename desde la ui
+                if self.contenedor.ischeckbox_renamer_iso:
+                    rename_filee = get_real_path(rename_filee, index_list)
+
                 path_file = self.contenedor.new_folder / rename_filee
 
                 with open(path_file, "rb") as file_content:

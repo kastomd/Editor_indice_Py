@@ -86,7 +86,18 @@ class DataConvert():
         return [f"{'iso' if not self.contenedor.is_bin else 'BIN'} compress_task finished{reem}"]
 
 
-    def getOffsetConvert(self, val, set_v: bool = True):
+    def getOffsetConvert(self, val, set_v: bool = True, desincript_ttt:bool=False, encript_ttt:bool=False, key:int=0x4B636150, base_offset:int=0x7e0+0x70):
+        if desincript_ttt:
+            # --- DESENCRIPTADO ---
+            val ^= key
+            val = (val + base_offset) & 0xFFFFFFFF
+            return val
+        if encript_ttt:
+            # --- ENCRIPTADO ---
+            val = (val - base_offset) & 0xFFFFFFFF
+            val ^= key
+            return val
+
         values_address = {
             11: [5, 4, 7, 6, 1, 0, 3, 2, 13, 12, 15, 14, 9, 8, 11, 10],
             22: [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14],
@@ -128,7 +139,12 @@ class DataConvert():
         return hex(val)[2:].upper()
 
         
-    def getSizeConvert(self, key: str, bitR, set_v: bool = True):
+    def getSizeConvert(self, key: str, bitR, set_v: bool = True, desincript_ttt:bool=False):
+        if desincript_ttt:
+            # --- DESENCRIPTADO --- ENCRIPTADO --- ttt
+            bitR ^= int(key)
+            return bitR
+
         values_size = {
             1: [1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10, 13, 12, 15, 14],
             2: [2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13],

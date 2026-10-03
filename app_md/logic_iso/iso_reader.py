@@ -46,9 +46,9 @@ class IsoReader:
                 # 6–9 - Extent Location (BE)
                 data += struct.pack(">I", extent)
                 # 10–13 - Data Length (LE)
-                data += struct.pack("<I", size)
-                # 14–17 - Data Length (BE)
-                data += struct.pack(">I", size)
+                # data += struct.pack("<I", size)
+                # # 14–17 - Data Length (BE)
+                # data += struct.pack(">I", size)
 
                 #agregar la info dl archivo
                 data_files[archivo_path] = [offset, size, data]
@@ -71,12 +71,19 @@ class IsoReader:
                 if pos == -1:
                     break
 
+                nombre = k.rstrip("/").split("/")[-1]
+                datos = nombre.encode("ascii")
+                name_in_iso = data[pos+0x21:pos+0x21+len(datos)]
+                if name_in_iso == datos:
+                    posiciones = [pos]
+                    break
+
                 posiciones.append(pos)
                 offset = pos + 1  # seguir buscando
 
             data_files[k][2] = posiciones[0] if len(posiciones) == 1 else None
 
-        print(data_files)
+        # print(data_files)
         return data_files
 
-    #data = '/PSP_GAME/USRDIR/PACKFILE.BIN' = [offset, size]
+    #data = '/PSP_GAME/USRDIR/PACKFILE.BIN' = [offset, size, address]
