@@ -5,7 +5,6 @@ import traceback
 import qdarkstyle
 import winreg
 
-
 from PyQt5.QtWidgets import QAction, QApplication, QCheckBox, QFileDialog, QLabel, QLineEdit, QMainWindow, QMessageBox, \
     QPlainTextEdit, QPushButton, QSplashScreen, QVBoxLayout, QWidget, QGridLayout
 from PyQt5.QtGui import QFont, QGuiApplication, QIcon, QKeySequence, QPixmap
@@ -13,6 +12,7 @@ from PyQt5.QtCore import QFile, Qt, QTimer, QThreadPool
 from pathlib import Path
 
 from app_md.exvoices.ex_voices import ExVoicesApp
+from app_md.logic_texture_psp.texture_bin import PSPTextureExtractor
 from app_md.windows.about_dialog import AboutDialog
 from app_md.logic_iso.iso_reader import IsoReader
 from app_md.windows.error_dialog import ErrorDialog
@@ -26,16 +26,19 @@ import os
 import shutil
 
 from app_md.windows.utils import hide_user
+from app_md.logic_texture_psp.tex_viewer import TexViewer
+# Imports para PSP_TexView_Auto / PSP_TexView_Raw se pueden agregar aquí cuando estén disponibles.
+from app_md.logic_explorer_ram.psp_iso_explorer import IsoExplorer
 
 
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260421"
-        
-        #icono de la app
+        self.version = "1.20261009-test"
+
+        # icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"
-        
+
         # Crear QApplication primero
         self.app = QApplication(sys.argv)
 
@@ -79,8 +82,7 @@ class BaseApp:
         # Crear y mostrar ventana principal
         self.window = MainWindow(self)
         self.center_on_screen()
-        
-        
+
         self.init_menu()
 
         self.window.show()
@@ -100,7 +102,7 @@ class BaseApp:
         sys.exit(self.app.exec_())
 
     def init_menu(self):
-        #inciar windows class
+        # inciar windows class
         self.about = AboutDialog(self)
         self.extract_w = ExtractTool(window=self.window)
 
@@ -119,7 +121,7 @@ class BaseApp:
         openiso_action.triggered.connect(self.open_iso)
         savebin_action.setShortcut(QKeySequence("Ctrl+Shift+S"))
         savebin_action.triggered.connect(lambda: self.window.compress_task(packBin=True))
-        closeiso_action.triggered.connect(lambda :self.close_iso(view= False))
+        closeiso_action.triggered.connect(lambda: self.close_iso(view=False))
         exit_action.triggered.connect(self.window.close)
 
         file_menu.addAction(openiso_action)
@@ -146,6 +148,23 @@ class BaseApp:
         ex_voices_action.triggered.connect(self.run_exvoices)
         tool_menu.addAction(ex_voices_action)
 
+        # Visor de Textura
+        # Al pasar el mouse sobre "Visor Textura" se abrirá este submenú.
+        texture_viewer_menu = tool_menu.addMenu("Visor Textura")
+
+        psp_texview_auto_action = QAction("PSP_TexView_Auto", self.window)
+        psp_texview_auto_action.triggered.connect(self.open_psp_texview_auto)
+        texture_viewer_menu.addAction(psp_texview_auto_action)
+
+        psp_texview_raw_action = QAction("PSP_TexView_Raw", self.window)
+        psp_texview_raw_action.triggered.connect(self.open_psp_texview_raw)
+        texture_viewer_menu.addAction(psp_texview_raw_action)
+
+        # PSP ISO Explorer
+        psp_iso_explorer_action = QAction("PSP Iso Explorer", self.window)
+        psp_iso_explorer_action.triggered.connect(self.open_psp_iso_explorer)
+        tool_menu.addAction(psp_iso_explorer_action)
+
         # Menu About
         help_menu = menu_bar.addMenu("Help")
         about_action = QAction("About", self.window)
@@ -162,6 +181,35 @@ class BaseApp:
     def run_exvoices(self):
         self.win_exvoices = ExVoicesApp(self.window)  # self = ventana principal
         self.win_exvoices.exec_()
+
+    def open_psp_texview_auto(self):
+        """
+        Abre la UI PSP_TexView_Auto.
+        """
+        self.psp_texview_auto = TexViewer()
+        self.psp_texview_auto.setWindowIcon(QIcon(str(self.icon)))
+        self.psp_texview_auto.show()
+
+    def open_psp_texview_raw(self):
+        """
+        Abre la UI PSP_TexView_Raw.
+        """
+        self.psp_texview_raw = PSPTextureExtractor()
+        self.psp_texview_raw.setWindowIcon(QIcon(str(self.icon)))
+        self.psp_texview_raw.show()
+
+    # Se mantiene por compatibilidad con código que todavía pueda llamar
+    # directamente a este metodo.
+    def open_texture_viewer(self):
+        self.open_psp_texview_auto()
+
+    def open_psp_iso_explorer(self):
+        """
+        Punto de entrada para abrir PSP Iso Explorer.
+        """
+        self.psp_iso_explorer = IsoExplorer(self)
+        self.psp_iso_explorer.setWindowIcon(QIcon(str(self.icon)))
+        self.psp_iso_explorer.show()
 
     def open_iso(self, file_path=None):
         # Verifica si se arrastro un archivo
@@ -195,7 +243,6 @@ class BaseApp:
         self.window.label.setPlainText("path iso")
         self.window.success_dialog(["path iso reseted"])
 
-    
     def select_and_rename_files_with_m(self):
         files, _ = QFileDialog.getOpenFileNames(
             self.window,
@@ -214,7 +261,7 @@ class BaseApp:
                 continue
 
             if "_m_" in path.name.lower():
-               new_name = path.name.replace("_m_", "")
+                new_name = path.name.replace("_m_", "")
             else:
                 new_name = f"{path.stem}_m_{path.suffix}"
 
@@ -228,7 +275,7 @@ class BaseApp:
 
         self.window.success_dialog(vaule=[f"renamed files: {len(renamed_files)}"])
 
-        
+
 class MainWindow(QMainWindow):
     def __init__(self, contenedor):
         super().__init__()
@@ -263,7 +310,7 @@ class MainWindow(QMainWindow):
         self.edit_lbl_data_size = QLineEdit(self)
         self.edit_lbl_data_size.setText("0x38000")
         self.edit_lbl_data_size.setPlaceholderText("index size")
-        self.edit_lbl_data_size.setToolTip("Indicates the starting position of the first file in the ISO")
+        self.edit_lbl_data_size.setToolTip("Indicates the header size of the packfile")
 
         self.edit_lbl_files = QLineEdit(self)
         self.edit_lbl_files.setText("0x3711")
@@ -308,7 +355,6 @@ class MainWindow(QMainWindow):
         self.checkbox_audio_filter.stateChanged.connect(self.on_state_checbox_checkbox_audio_filter)
         self.checkbox_audio_filter.setToolTip(
             "Process the audio with an anti-aliasing filter, if the filename contains _m_")
-
 
         layout = QVBoxLayout()
         layout.addWidget(self.edit_lb_pack)
@@ -355,10 +401,10 @@ class MainWindow(QMainWindow):
             urls = event.mimeData().urls()
         else:
             files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Choose files",
-            "",
-            "All files (*.*)"
+                self,
+                "Choose files",
+                "",
+                "All files (*.*)"
             )
             urls = files
             url_local = False
@@ -417,7 +463,8 @@ class MainWindow(QMainWindow):
         self.open_audios(at3_path=at3_files, wav_path=wav_files)
 
     def closeEvent(self, event):
-        reply = self.question_dialog(content="Are you sure you want to close the Editor application?", title="Confirm exit")
+        reply = self.question_dialog(content="Are you sure you want to close the Editor application?",
+                                     title="Confirm exit")
 
         if reply == QMessageBox.Ok:
             event.accept()
@@ -430,33 +477,35 @@ class MainWindow(QMainWindow):
             return
         self.setEnabled(False)
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        #cargar paths del iso
+        # cargar paths del iso
         try:
             self.paths_iso = IsoReader.listar_archivos_iso(self.contenedor.path_iso)
         except Exception as e:
             error_msg = traceback.format_exc()  # Obtener la traza del error como texto
             self.manejar_error(f"Error attempting to read the ISO file.\n{error_msg}")
-            #resetear todo
+            # resetear _todo
             # self.contenedor.close_iso(False)
             return
 
-        #obtener el path packfile
+        # obtener el path packfile
         self.index_Packfile = self.paths_iso.get(self.edit_lb_pack.text())
 
         if not self.index_Packfile:
             self.setEnabled(True)
             QApplication.restoreOverrideCursor()
             keys = "\n".join(self.paths_iso.keys())
-            ErrorDialog(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}", self.icon_path).exec_()
+            ErrorDialog(
+                f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}",
+                self.icon_path).exec_()
             # self.paths_iso = None
-            #resetear todo
+            # resetear _todo
             # self.contenedor.close_iso(False)
             return
 
-        #obtener los index verdaderos
+        # obtener los index verdaderos
         self.dataconvert = DataConvert(self)
 
-        #crear una tarea asincrona
+        # crear una tarea asincrona
         worker = Worker(self.dataconvert.getDataIso)
         worker.signals.resultado.connect(self.resultado_indexs)
         worker.signals.error.connect(self.manejar_error)
@@ -475,7 +524,7 @@ class MainWindow(QMainWindow):
     def resultado_indexs(self, indexs):
         self.indexs = indexs
 
-        #crear una carpeta
+        # crear una carpeta
         file_iso = Path(self.contenedor.path_iso)
         self.new_folder = file_iso.parent / f"ext_PACKFILE_BIN_{file_iso.stem}"
         if self.new_folder.exists():
@@ -488,12 +537,11 @@ class MainWindow(QMainWindow):
         self.new_folder.mkdir(parents=True, exist_ok=True)
         # delete_content_folder(self.new_folder)
 
-        #exportar los archivos a la carpeta
+        # exportar los archivos a la carpeta
         self.datafilemanager = DataFileManager(self)
         self.datafilemanager.task_save()
-        
 
-    def compress_task(self, packBin:bool=False):
+    def compress_task(self, packBin: bool = False):
         if not self.contenedor.path_iso:
             self.success_dialog(["open a file first"], "Warning!")
             return
@@ -508,7 +556,6 @@ class MainWindow(QMainWindow):
         self.setEnabled(False)
         QApplication.setOverrideCursor(Qt.WaitCursor)
 
-        
         # cargar paths del iso
         try:
             self.paths_iso = IsoReader.listar_archivos_iso(self.contenedor.path_iso)
@@ -524,8 +571,9 @@ class MainWindow(QMainWindow):
             self.setEnabled(True)
             QApplication.restoreOverrideCursor()
             keys = "\n".join(self.paths_iso.keys())
-            self.manejar_error(f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}")
-            
+            self.manejar_error(
+                f"The path \"{self.edit_lb_pack.text()}\" was not found within the paths of the ISO file.\n\nPaths within the ISO file:\n{keys}")
+
             return
 
         # carpeta con los archivos
@@ -538,8 +586,9 @@ class MainWindow(QMainWindow):
         self.name_compress_iso = self.contenedor.path_iso.parent / f"compress_{self.contenedor.path_iso.name if not self.is_bin else 'PACKFILE.BIN'}"
 
         if QFile.exists(str(self.name_compress_iso)):
-            respuesta = self.question_dialog(f"The {'iso' if not self.is_bin else 'BIN'} compress exists; its file will be deleted.")
-            
+            respuesta = self.question_dialog(
+                f"The {'iso' if not self.is_bin else 'BIN'} compress exists; its file will be deleted.")
+
             if respuesta == QMessageBox.Cancel:
                 self.success_dialog(["Compress operation canceled by the user."])
                 return
@@ -573,21 +622,21 @@ class MainWindow(QMainWindow):
 
         self.dataconvert = DataConvert(self)
 
-        #crear una tarea asincrona
+        # crear una tarea asincrona
         worker = Worker(self.dataconvert.setDataIso)
         worker.signals.resultado.connect(self.success_dialog)
         worker.signals.error.connect(self.manejar_error)
         self.thread_pool.start(worker)
 
     def manejar_error(self, error_msg):
-        #mostrar una ventana con el error
+        # mostrar una ventana con el error
         self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
 
         QApplication.restoreOverrideCursor()
         ErrorDialog(error_msg, self.icon_path).exec_()
 
-    def success_dialog(self, vaule, title:str="Success", parent=None):
+    def success_dialog(self, vaule, title: str = "Success", parent=None):
         self.contenedor.extract_w.setEnabled(True)
         self.setEnabled(True)
 
@@ -608,14 +657,14 @@ class MainWindow(QMainWindow):
         )
         self.secundaria.exec_()
 
-    def question_dialog(self, content, title:str="Warning!"):
+    def question_dialog(self, content, title: str = "Warning!"):
         answer = QMessageBox.question(
-                            self,
-                            title,
-                            content,
-                            QMessageBox.Ok | QMessageBox.Cancel,
-                            QMessageBox.Cancel
-                        )
+            self,
+            title,
+            content,
+            QMessageBox.Ok | QMessageBox.Cancel,
+            QMessageBox.Cancel
+        )
 
         return answer
 

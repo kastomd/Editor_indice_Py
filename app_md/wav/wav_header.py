@@ -7,6 +7,9 @@ import sys
 from scipy.io import wavfile
 from scipy.signal import resample_poly
 import numpy as np
+import soundfile as sf
+import soxr
+
 
 class AT3HeaderBuilder:
     def __init__(self, parent=None, data_size=0, sample_rate=44100, channels=2, samples=0, byte_rate=13092):
@@ -88,8 +91,9 @@ class AT3HeaderBuilder:
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         return subprocess.run(
             command,
-            capture_output=True,
             text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             creationflags=creation_flags
         )
 
@@ -110,40 +114,79 @@ class AT3HeaderBuilder:
 
         return riff == b'RIFF' and wav == b'WAVE'
 
-    def convert_wav_to_at3(self, wav_path: Path, output_at3_path: Path, bitrate:int=105, loop:bool=False):
+    @staticmethod
+    def cambiar_velocidad_tono(
+            input_path: str,
+            output_path: str,
+            factor: float,
+            block_size: int = 65536
+    ):
+        """
+        Cambia la velocidad del audio parecido al proceso de audiacity
+        :param input_path: audio de entrada
+        :param output_path: audio de salida
+        :param factor: define la velocidad y tono del audio
+        :param block_size: block de sampleos
+        :return: guarda el audio en formato .wav
+        """
+        if factor <= 0:
+            raise ValueError("El factor debe ser mayor que 0")
+
+        audio, sample_rate = sf.read(
+            input_path,
+            dtype="float32",
+            always_2d=True
+        )
+
+        target_rate = sample_rate / factor
+
+        resampler = soxr.ResampleStream(
+            sample_rate,
+            target_rate,
+            audio.shape[1],
+            dtype="float32",
+            quality="VHQ"
+        )
+
+        output = []
+
+        for pos in range(0, len(audio), block_size):
+
+            block = audio[pos:pos + block_size]
+
+            last = pos + block_size >= len(audio)
+
+            result = resampler.resample_chunk(
+                block,
+                last=last
+            )
+
+            if len(result):
+                output.append(result)
+
+        if not output:
+            result = np.empty((0, audio.shape[1]), dtype=np.float32)
+        else:
+            result = np.concatenate(output, axis=0)
+
+        sf.write(
+            output_path,
+            result,
+            sample_rate,
+            subtype="PCM_16"
+        )
+
+    def convert_wav_to_at3(self, wav_path: Path, output_at3_path: Path, bitrate:int=105, loop:bool=False, force_speed:bool=False):
         if not wav_path.is_file():
             raise FileNotFoundError(f"WAV file not found: {wav_path}")
 
         # aplicar el doble de velocidad si lo requiere
-        if "_m_" in wav_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
+        if force_speed or  "_m_" in wav_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:
             try:
-                sr, data = wavfile.read(wav_path)
-
-                data_float = data.astype(np.float32) / 32768.0
-
-                data_slow = resample_poly(
-                    data_float,
-                    up=1,
-                    down=2,
-                    window=('kaiser', 8.0)
-                ) if self.parent.ischeckbox_audio_filter else resample_poly(
-                    data_float,
-                    up=1,
-                    down=2
-                )
-
-                if self.parent.ischeckbox_audio_filter:
-                    # ajusta los picos
-                    peak = max(abs(data_slow.max()), abs(data_slow.min()))
-                    if peak > 0:
-                        data_slow = (data_slow / peak) * 0.95
-
-                data_out = (data_slow * 32767).astype(np.int16)
-
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                     temp_path = tmp.name
 
-                wavfile.write(temp_path, sr, data_out)
+                self.cambiar_velocidad_tono(input_path=str(wav_path), output_path=temp_path, factor=2.0)
 
                 wav_path = Path(temp_path)
                 print(f"SPEED 2.0 - 44100hz: {wav_path.name}")
@@ -169,7 +212,8 @@ class AT3HeaderBuilder:
         result = self._run_subprocess(command)
 
         if result.returncode != 0:
-            raise ValueError(f"Error converting \"{wav_path.name}\":\n{result.stderr}\nThe audio must be WAV PCM 16-bit at 44100 Hz stereo")
-        
+            error = result.stdout.strip()
+            raise ValueError(f"Error converting \"{wav_path.name}\" output:\n{error}\nThe audio must be WAV PCM 16-bit at 44100 Hz stereo")
+
         return f"Success at3: {output_at3_path.name}"
 

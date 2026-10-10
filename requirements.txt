@@ -5,3 +5,4 @@ soundfile
 numpy
 pillow
 scipy
+soxr

@@ -62,11 +62,26 @@ class ExtractTool(QDialog):
         action_anm_tanm = QAction("Convert anm or tanm", self)
         action_anm_tanm.triggered.connect(self.process_anm)
 
+        action_swap = QAction("Swap Attacks (TTT)", self)
+        action_swap.setShortcut(QKeySequence("Ctrl+T"))
+        action_swap.triggered.connect(self.open_swap_attacks)
+
+        action_anim0 = QAction("Anims0 (vaciar animaciones)", self)
+        action_anim0.setShortcut(QKeySequence("Ctrl+0"))
+        action_anim0.triggered.connect(self.open_anims0)
+
+        action_port = QAction("BT3 → TTT Port", self)
+        action_port.setShortcut(QKeySequence("Ctrl+P"))
+        action_port.triggered.connect(self.open_port)
+
         file_menu.addAction(action_close_fil)
         file_menu.addAction(action_salir)
         tool_menu.addAction(action_edit)
         tool_menu.addAction(action_edit_exr)
         tool_menu.addAction(action_anm_tanm)
+        tool_menu.addAction(action_swap)
+        tool_menu.addAction(action_anim0)
+        tool_menu.addAction(action_port)
         self.menu_bar.addMenu(file_menu)
         self.menu_bar.addMenu(tool_menu)
 
@@ -395,7 +410,7 @@ class ExtractTool(QDialog):
             self,
             "Choose files",
             "",
-            "anims files (*.anm);;tanms files (*.tanm);;All files (*.*)"
+            "Anim files (*.anm *.tanm);;anims files (*.anm);;tanms files (*.tanm);;All files (*.*)"
         )
 
         if not files:
@@ -425,6 +440,47 @@ class ExtractTool(QDialog):
                                                     paths_tanm=files_list.get(".tanm"))
 
         return ["successfully converted"]
+
+    def open_swap_attacks(self):
+        try:
+            from app_md.logic_swap.swap_attacks import SwapApp
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo importar Swap_Attacks: {e}")
+            return
+
+        self.setEnabled(False)
+        swap = SwapApp(parent_tool=self)
+        swap.exec_()
+
+    def open_anims0(self):
+        try:
+            from app_md.windows.anim0 import Anims0
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"No se pudo abrir Anims0:\n{e}")
+            return
+
+        if hasattr(self, "anims0_window") and self.anims0_window is not None:
+            try:
+                self.anims0_window.close()
+            except:
+                pass
+
+        self.anims0_window = Anims0()
+        self.anims0_window.setWindowIcon(self.windowIcon())
+        self.anims0_window.setFont(self.font())
+        self.anims0_window.show()
+        self.anims0_window.raise_()
+        self.anims0_window.activateWindow()
+
+    def open_port(self):
+        try:
+            from app_md.logic_port.port_window import PortWindow
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not load Port tool: {e}")
+            return
+        self.setEnabled(False)
+        port = PortWindow(parent_tool=self)
+        port.exec_()
 
 
 class ClickableFrame(QFrame):
