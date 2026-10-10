@@ -11,7 +11,7 @@ import qdarkstyle
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt5.QtGui import QPixmap, QPainter, QPen, QBrush, QColor, QFont
+from PyQt5.QtGui import QPixmap, QPainter, QPen, QBrush, QColor, QFont, QIcon
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QFileDialog, QMessageBox, QDialog,
@@ -20,6 +20,8 @@ from PyQt5.QtWidgets import (
     QProgressBar, QStatusBar, QAction, QWidget, QStyle, QInputDialog, QAbstractItemView,
     QMenu, QLineEdit, QFormLayout
 )
+
+from app_md.elf_edit.main_gui import ElfEditor
 from app_md.logic_iso.data_convert import DataConvert
 from app_md.logic_explorer_ram.packfile_explorer import (
     PackFileBuffer,
@@ -325,7 +327,7 @@ class IsoReader:
         self.fp.seek(entry.extent * SECTOR_SIZE)
         return bytearray(self.fp.read(entry.size))
 
-    def read_file_into(self, entry, buffer, chunk_size=1024 * 1024):
+    def read_file_into(self, entry, buffer, chunk_size=1024 * 1024, pack:bool=False):
         """
         Lee un archivo directamente dentro del bytearray recibido.
 
@@ -338,7 +340,7 @@ class IsoReader:
         if not isinstance(buffer, bytearray):
             raise TypeError("buffer debe ser un bytearray")
 
-        if len(buffer) != int(entry.size):
+        if len(buffer) != int(entry.size) and not pack:
             raise ValueError(
                 f"El buffer tiene {len(buffer)} bytes y el archivo requiere "
                 f"{int(entry.size)} bytes."
@@ -642,6 +644,9 @@ class IsoExplorer(QMainWindow):
         self.resize(900, 400)
         self.main_app = contenedor
 
+        # Permitir arrastrar archivos físicos a la ventana.
+        self.setAcceptDrops(True)
+
         self.reader = None
         self.iso_path = None
         self.mode = None
@@ -691,6 +696,8 @@ class IsoExplorer(QMainWindow):
         self.setCentralWidget(center)
 
         self._create_menu()
+
+        self.elf_editor_ui = None
 
     def _create_menu(self):
         menubar = self.menuBar()
@@ -747,6 +754,12 @@ class IsoExplorer(QMainWindow):
         edit_size_action.triggered.connect(self.edit_selected_size)
         tools_menu.addAction(edit_size_action)
 
+        tools_menu.addSeparator()
+
+        elf_editor_action = QAction("ELF Editor", self)
+        elf_editor_action.triggered.connect(self.open_elf_editor)
+        tools_menu.addAction(elf_editor_action)
+
         # Help: configuración y créditos del programa.
         help_menu = menubar.addMenu("Help")
 
@@ -757,6 +770,18 @@ class IsoExplorer(QMainWindow):
         credits_action = QAction("Credits", self)
         credits_action.triggered.connect(self.show_credits)
         help_menu.addAction(credits_action)
+
+    def open_elf_editor(self):
+        """
+        Punto de entrada para tu ELF Editor.
+        """
+        if self.elf_editor_ui is not None:
+            self.elf_editor_ui.show()
+            return
+
+        self.elf_editor_ui = ElfEditor()
+        self.elf_editor_ui.setWindowIcon(QIcon(str(self.main_app.icon)))
+        self.elf_editor_ui.show()
 
     def get_packfile_header_size(self):
         """Devuelve el tamaño configurado del header de PACKFILE.BIN."""
@@ -800,6 +825,172 @@ class IsoExplorer(QMainWindow):
     def show_credits(self):
         """Abre la ventana de créditos."""
         CreditsDialog(self).exec_()
+
+    def dragEnterEvent(self, event):
+        """Acepta archivos físicos arrastrados a la ventana."""
+        if event.mimeData().hasUrls():
+            if any(url.isLocalFile() for url in event.mimeData().urls()):
+                event.acceptProposedAction()
+                return
+
+        event.ignore()
+
+    def dropEvent(self, event):
+        """
+        Procesa el primer archivo físico arrastrado.
+
+        - .iso -> abre la ISO mediante open_iso().
+        - cualquier otra extensión -> intenta importarlo en el único
+          archivo de la ISO que esté seleccionado.
+        """
+        if not event.mimeData().hasUrls():
+            event.ignore()
+            return
+
+        physical_path = None
+
+        for url in event.mimeData().urls():
+            if url.isLocalFile():
+                candidate = Path(url.toLocalFile())
+                if candidate.is_file():
+                    physical_path = candidate
+                    break
+
+        if physical_path is None:
+            event.ignore()
+            return
+
+        # Un ISO arrastrado conserva el comportamiento de Open ISO.
+        if physical_path.suffix.lower() == ".iso":
+            dlg = StorageModeDialog(self)
+            if dlg.exec_() != QDialog.Accepted:
+                event.ignore()
+                return
+
+            self.mode = dlg.mode
+            self.open_iso(str(physical_path))
+            event.acceptProposedAction()
+            return
+
+        # Cualquier otro archivo se trata como Import...
+        selected_paths = self.get_selected_paths()
+
+        if len(selected_paths) > 1:
+            QMessageBox.information(
+                self,
+                "Importar",
+                "Hay seleccionado más de un archivo. "
+                "No se puede importar el archivo."
+            )
+            event.acceptProposedAction()
+            return
+
+        if len(selected_paths) == 0:
+            QMessageBox.information(
+                self,
+                "Importar",
+                "Selecciona un archivo de la ISO para importar el archivo."
+            )
+            event.acceptProposedAction()
+            return
+
+        selected_path = selected_paths[0]
+        entry = self.entries_by_path.get(selected_path)
+
+        if not entry or entry.is_dir:
+            QMessageBox.information(
+                self,
+                "Importar",
+                "Selecciona un archivo, no un directorio."
+            )
+            event.acceptProposedAction()
+            return
+
+        answer = QMessageBox.question(
+            self,
+            "Importar archivo",
+            f'Se importará el archivo "{physical_path.name}" '
+            f'en "{entry.name}".\n\n'
+            "¿Desea continuar?",
+            QMessageBox.Ok | QMessageBox.Cancel,
+            QMessageBox.Cancel
+        )
+
+        if answer != QMessageBox.Ok:
+            event.acceptProposedAction()
+            return
+
+        # Usa exactamente la misma lógica de Import... después de la
+        # confirmación, sin volver a abrir el selector de archivo.
+        self._import_file_from_path(str(physical_path), selected_path)
+
+        event.acceptProposedAction()
+
+    def _import_file_from_path(self, source, path):
+        """Importa un archivo físico en una entrada concreta de la ISO."""
+        entry = self.entries_by_path.get(path)
+
+        if not entry or entry.is_dir:
+            QMessageBox.information(
+                self,
+                "Importar",
+                "Selecciona un archivo, no un directorio."
+            )
+            return
+
+        try:
+            new_size = os.path.getsize(source)
+
+            if new_size > entry.size:
+                answer = QMessageBox.question(
+                    self,
+                    "Tamaño mayor",
+                    f"El archivo nuevo mide {self.format_size(new_size)} y "
+                    f"el original {self.format_size(entry.size)}.\n\n"
+                    "El archivo podrá reconstruirse como una nueva ISO, "
+                    "pero no se conservará el espacio físico original.\n\n"
+                    "¿Continuar?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                if answer != QMessageBox.Yes:
+                    return
+
+            if self.mode == "ram":
+                with open(source, "rb") as f:
+                    self.memory_files[path] = f.read()
+            else:
+                destination = self.storage_root / path.lstrip("/")
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(source, destination)
+
+            entry.size = new_size
+            self.modified.add(path)
+
+            # Mantener sincronizado el elemento visual seleccionado.
+            for item in self.tree.selectedItems():
+                if item.data(0, Qt.UserRole) == path:
+                    item.setText(2, self.format_size(new_size))
+                    break
+
+            self.status.showMessage(
+                f"Archivo reemplazado: {path} ({self.format_size(new_size)})"
+            )
+
+            QMessageBox.information(
+                self,
+                "Importar",
+                "Archivo importado correctamente.\n\n"
+                "Para obtener una ISO modificada usa "
+                "File → Rebuild ISO..."
+            )
+
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Error al importar",
+                f"No se pudo importar el archivo:\n\n{exc}"
+            )
 
     def choose_iso(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -1059,185 +1250,195 @@ class IsoExplorer(QMainWindow):
         archivo ISO original los bytes que faltan y se conservan en el
         almacenamiento de trabajo.
         """
-        paths = self.get_selected_paths()
-        if len(paths) != 1:
-            return
-
-        packfile_entry = self.entries_by_path.get(paths[0])
-        if not packfile_entry or packfile_entry.is_dir:
-            return
-
-        if packfile_entry.name.upper() != "PACKFILE.BIN":
-            return
-
-        # ================================================================
-        # DATOS DISPONIBLES PARA TU CÓDIGO
-        # ================================================================
-        packfile_size = int(packfile_entry.size)
-
         try:
-            iso_size = Path(self.iso_path).stat().st_size
-        except (OSError, TypeError):
-            iso_size = 0
+            paths = self.get_selected_paths()
+            if len(paths) != 1:
+                return
 
-        packfile_offset = int(packfile_entry.extent) * SECTOR_SIZE
+            packfile_entry = self.entries_by_path.get(paths[0])
+            if not packfile_entry or packfile_entry.is_dir:
+                return
 
-        # Lee el contenido disponible en el almacenamiento de trabajo.
-        # Puede estar truncado al tamaño lógico original de la ISO.
-        packfile_data = self._get_file_data(packfile_entry)
-        packfile_data_size = len(packfile_data)
+            if packfile_entry.name.upper() != "PACKFILE.BIN":
+                return
 
-        # ---------------------------------------------------------------
-        # CÓDIGO DE RECÁLCULO
-        # ---------------------------------------------------------------
-        if len(packfile_data) < 8:
-            raise ValueError(
-                "PACKFILE.BIN no contiene suficientes datos para leer "
-                "su cabecera."
-            )
-
-        key_ttt = struct.unpack('<I', packfile_data[0:4])[0]
-        num_files = struct.unpack('<I', packfile_data[4:8])[0]
-        print(f"key ttt: {key_ttt} num files: {num_files}")
-
-        offsets = []
-        dc = DataConvert(None)
-
-        for i in range(1, num_files + 1):
-            record_offset = i * 0x10
-            record_end = record_offset + 8
-
-            if record_end > len(packfile_data):
-                raise ValueError(
-                    "El tamaño registrado de PACKFILE.BIN es demasiado "
-                    "pequeño para contener toda la tabla de archivos."
-                )
-
-            offset = struct.unpack(
-                '<I',
-                packfile_data[record_offset:record_offset + 4]
-            )[0]
-
-            offset = dc.getOffsetConvert(
-                val=offset,
-                desincript_ttt=True,
-                key=key_ttt,
-                base_offset=(packfile_offset // 0x800) + 0x70
-            )
-
-            long = struct.unpack(
-                '<I',
-                packfile_data[record_offset + 4:record_offset + 8]
-            )[0]
-
-            long = dc.getSizeConvert(
-                bitR=long,
-                key=f"{i - 1}",
-                desincript_ttt=True
-            )
-
-            offsets.append((offset * 0x800, long))
-
-        if not offsets:
-            raise ValueError(
-                "PACKFILE.BIN no contiene archivos para calcular su tamaño."
-            )
-
-        offsets.sort(key=lambda x: x[0])
-        offset_final = offsets[-1][0] + offsets[-1][1]
-
-        if offset_final > iso_size:
-            raise ValueError(
-                f"No se pudo recalcular el tamaño del archivo: "
-                f"{offset_final:X} > iso_size: {iso_size:X}"
-            )
-
-        packfile_long_new = offset_final - packfile_offset
-
-        if packfile_long_new <= 0:
-            raise ValueError(
-                f"No fue posible recalcular el tamaño del archivo: "
-                f"{packfile_long_new}"
-            )
-
-        # ================================================================
-        # CONSERVAR LOS DATOS QUE QUEDAN FUERA DEL TAMAÑO LÓGICO ORIGINAL
-        # ================================================================
-        # Si el nuevo tamaño es mayor que los datos que actualmente tenemos,
-        # recuperamos del ISO original únicamente la parte que falta.
-        # Así se conservan posibles modificaciones hechas a los primeros
-        # bytes del PACKFILE y además se recupera su cola física original.
-        if packfile_long_new > len(packfile_data):
-            missing_size = packfile_long_new - len(packfile_data)
+            # ================================================================
+            # DATOS DISPONIBLES PARA TU CÓDIGO
+            # ================================================================
+            packfile_size = int(packfile_entry.size)
 
             try:
-                with open(self.iso_path, "rb") as iso_fp:
-                    iso_fp.seek(packfile_offset + len(packfile_data))
-                    extra_data = iso_fp.read(missing_size)
-            except (OSError, TypeError) as exc:
-                raise ValueError(
-                    f"No se pudieron recuperar los datos faltantes de "
-                    f"PACKFILE.BIN desde la ISO original: {exc}"
-                ) from exc
+                iso_size = Path(self.iso_path).stat().st_size
+            except (OSError, TypeError):
+                iso_size = 0
 
-            if len(extra_data) != missing_size:
-                raise ValueError(
-                    "La ISO original no contiene suficientes datos físicos "
-                    "para recuperar el final de PACKFILE.BIN."
-                )
+            packfile_offset = int(packfile_entry.extent) * SECTOR_SIZE
 
-            packfile_data += extra_data
+            # Lee el contenido disponible en el almacenamiento de trabajo.
+            # Puede estar truncado al tamaño lógico original de la ISO.
+            packfile_data = self._get_file_data(entry=packfile_entry, pack=True)
             packfile_data_size = len(packfile_data)
 
-            # Guardar la versión completa en el almacenamiento de trabajo.
-            if self.mode == "ram":
-                self.memory_files[packfile_entry.path] = packfile_data
-            else:
-                working_path = (
-                    self.storage_root / packfile_entry.path.lstrip("/")
+            # ---------------------------------------------------------------
+            # CÓDIGO DE RECÁLCULO
+            # ---------------------------------------------------------------
+            if len(packfile_data) < 8:
+                raise ValueError(
+                    "PACKFILE.BIN no contiene suficientes datos para leer "
+                    "su cabecera."
                 )
-                working_path.parent.mkdir(parents=True, exist_ok=True)
-                working_path.write_bytes(packfile_data)
 
-            print(
-                f"Datos recuperados del PACKFILE: "
-                f"0x{missing_size:X} bytes adicionales"
-            )
+            key_ttt = struct.unpack('<I', packfile_data[0:4])[0]
+            num_files = struct.unpack('<I', packfile_data[4:8])[0]
+            print(f"key ttt: {key_ttt} num files: {num_files}")
 
-        if packfile_long_new != packfile_size:
-            old_size = int(packfile_entry.size)
-            packfile_entry.size = packfile_long_new
+            offsets = []
+            dc = DataConvert(None)
 
-            # Actualizar el tamaño del PACKFILE en la interfaz.
-            item = self.tree.currentItem()
-            if item:
-                item.setText(2, self.format_size(packfile_long_new))
+            for i in range(1, num_files + 1):
+                record_offset = i * 0x10
+                record_end = record_offset + 8
 
-            # Marcar el PACKFILE como modificado para la reconstrucción.
-            self.modified.add(packfile_entry.path)
+                if record_end > len(packfile_data):
+                    raise ValueError(
+                        "El tamaño registrado de PACKFILE.BIN es demasiado "
+                        "pequeño para contener toda la tabla de archivos."
+                    )
 
-            QMessageBox.information(
+                offset = struct.unpack(
+                    '<I',
+                    packfile_data[record_offset:record_offset + 4]
+                )[0]
+
+                offset = dc.getOffsetConvert(
+                    val=offset,
+                    desincript_ttt=True,
+                    key=key_ttt,
+                    base_offset=(packfile_offset + self.get_packfile_header_size()) // 0x800
+                )
+
+                long = struct.unpack(
+                    '<I',
+                    packfile_data[record_offset + 4:record_offset + 8]
+                )[0]
+
+                long = dc.getSizeConvert(
+                    bitR=long,
+                    key=f"{i - 1}",
+                    desincript_ttt=True
+                )
+
+                offsets.append((offset * 0x800, long))
+
+            if not offsets:
+                raise ValueError(
+                    "PACKFILE.BIN no contiene archivos para calcular su tamaño."
+                )
+
+            offsets.sort(key=lambda x: x[0])
+            offset_final = offsets[-1][0] + offsets[-1][1]
+
+            if offset_final > iso_size:
+                raise ValueError(
+                    f"No se pudo recalcular el tamaño del archivo: "
+                    f"{offset_final:X} > iso_size: {iso_size:X}"
+                )
+
+            packfile_long_new = offset_final - packfile_offset
+
+            if packfile_long_new <= 0:
+                raise ValueError(
+                    f"No fue posible recalcular el tamaño del archivo: "
+                    f"{packfile_long_new}"
+                )
+
+            # ================================================================
+            # CONSERVAR LOS DATOS QUE QUEDAN FUERA DEL TAMAÑO LÓGICO ORIGINAL
+            # ================================================================
+            # Si el nuevo tamaño es mayor que los datos que actualmente tenemos,
+            # recuperamos del ISO original únicamente la parte que falta.
+            # Así se conservan posibles modificaciones hechas a los primeros
+            # bytes del PACKFILE y además se recupera su cola física original.
+            if packfile_long_new > len(packfile_data):
+                missing_size = packfile_long_new - len(packfile_data)
+
+                try:
+                    with open(self.iso_path, "rb") as iso_fp:
+                        iso_fp.seek(packfile_offset + len(packfile_data))
+                        extra_data = iso_fp.read(missing_size)
+                except (OSError, TypeError) as exc:
+                    raise ValueError(
+                        f"No se pudieron recuperar los datos faltantes de "
+                        f"PACKFILE.BIN desde la ISO original: {exc}"
+                    ) from exc
+
+                if len(extra_data) != missing_size:
+                    raise ValueError(
+                        "La ISO original no contiene suficientes datos físicos "
+                        "para recuperar el final de PACKFILE.BIN."
+                    )
+
+                packfile_data += extra_data
+                packfile_data_size = len(packfile_data)
+
+                # Guardar la versión completa en el almacenamiento de trabajo.
+                if self.mode == "ram":
+                    self.memory_files[packfile_entry.path] = packfile_data
+                else:
+                    working_path = (
+                        self.storage_root / packfile_entry.path.lstrip("/")
+                    )
+                    working_path.parent.mkdir(parents=True, exist_ok=True)
+                    working_path.write_bytes(packfile_data)
+
+                print(
+                    f"Datos recuperados del PACKFILE: "
+                    f"0x{missing_size:X} bytes adicionales"
+                )
+
+            if packfile_long_new != packfile_size:
+                old_size = int(packfile_entry.size)
+                packfile_entry.size = packfile_long_new
+
+                # Actualizar el tamaño del PACKFILE en la interfaz.
+                item = self.tree.currentItem()
+                if item:
+                    item.setText(2, self.format_size(packfile_long_new))
+
+                # Marcar el PACKFILE como modificado para la reconstrucción.
+                self.modified.add(packfile_entry.path)
+
+                QMessageBox.information(
+                    self,
+                    "Tamaño recalculado",
+                    "El tamaño de PACKFILE.BIN fue recalculado correctamente.\n\n"
+                    f"Anterior: 0x{old_size:X} ({old_size} bytes)\n"
+                    f"Nuevo:    0x{packfile_long_new:X} "
+                    f"({packfile_long_new} bytes)\n\n"
+                    f"Datos disponibles: 0x{packfile_data_size:X} bytes"
+                )
+
+                self.status.showMessage(
+                    f"Tamaño recalculado: {paths[0]} | "
+                    f"0x{old_size:X} → 0x{packfile_long_new:X} "
+                    f"({packfile_long_new} bytes)"
+                )
+
+                print(f"Tamaño recalculado: {packfile_long_new:X}")
+            else:
+                self.status.showMessage(
+                    f"PACKFILE.BIN ya tiene el tamaño correcto: "
+                    f"0x{packfile_size:X}"
+                )
+        except Exception as e:
+            QMessageBox.critical(
                 self,
-                "Tamaño recalculado",
-                "El tamaño de PACKFILE.BIN fue recalculado correctamente.\n\n"
-                f"Anterior: 0x{old_size:X} ({old_size} bytes)\n"
-                f"Nuevo:    0x{packfile_long_new:X} "
-                f"({packfile_long_new} bytes)\n\n"
-                f"Datos disponibles: 0x{packfile_data_size:X} bytes"
+                "Error recalcular tamaño",
+                "No se pudo recalcular el tamaño de PACKFILE.BIN\n"
+                f"Puedes cambiarlo manualmente con editar tamaño si lo conoces\n\n"
+                f"{e}"
             )
-
-            self.status.showMessage(
-                f"Tamaño recalculado: {paths[0]} | "
-                f"0x{old_size:X} → 0x{packfile_long_new:X} "
-                f"({packfile_long_new} bytes)"
-            )
-
-            print(f"Tamaño recalculado: {packfile_long_new:X}")
-        else:
-            self.status.showMessage(
-                f"PACKFILE.BIN ya tiene el tamaño correcto: "
-                f"0x{packfile_size:X}"
-            )
+            return
 
     def populate_open_with_menu(self, menu, entry):
         """Populate 'Abrir con' from the extensible handler registry."""
@@ -1608,7 +1809,7 @@ class IsoExplorer(QMainWindow):
             self.worker.failed.connect(self.worker_error)
             self.worker.start()
 
-    def _get_file_data(self, entry):
+    def _get_file_data(self, entry, pack:bool=False):
         """
         Obtiene los datos del archivo sin duplicar el archivo completo en RAM.
 
@@ -1624,8 +1825,8 @@ class IsoExplorer(QMainWindow):
                 if entry.is_dir:
                     self.memory_files[entry.path] = bytearray()
                 else:
-                    data = bytearray(int(entry.size))
-                    self.reader.read_file_into(entry, data)
+                    data = bytearray(int(entry.size) if not pack else self.get_packfile_header_size())
+                    self.reader.read_file_into(entry, data, pack=pack)
                     self.memory_files[entry.path] = data
 
             return self.memory_files[entry.path]
@@ -2049,14 +2250,16 @@ class IsoExplorer(QMainWindow):
         path = self.get_selected_path()
         if not path:
             QMessageBox.information(
-                self, "Importar", "Selecciona el archivo de la ISO que quieres reemplazar."
+                self, "Importar",
+                "Selecciona el archivo de la ISO que quieres reemplazar."
             )
             return
 
         entry = self.entries_by_path.get(path)
         if not entry or entry.is_dir:
             QMessageBox.information(
-                self, "Importar", "Selecciona un archivo, no un directorio."
+                self, "Importar",
+                "Selecciona un archivo, no un directorio."
             )
             return
 
@@ -2066,44 +2269,7 @@ class IsoExplorer(QMainWindow):
         if not source:
             return
 
-        try:
-            new_size = os.path.getsize(source)
-
-            if new_size > entry.size:
-                answer = QMessageBox.question(
-                    self,
-                    "Tamaño mayor",
-                    f"El archivo nuevo mide {self.format_size(new_size)} y "
-                    f"el original {self.format_size(entry.size)}.\n\n"
-                    "El archivo podrá reconstruirse como una nueva ISO, "
-                    "pero no se conservará el espacio físico original.\n\n"
-                    "¿Continuar?"
-                )
-                if answer != QMessageBox.Yes:
-                    return
-
-            if self.mode == "ram":
-                with open(source, "rb") as f:
-                    self.memory_files[path] = f.read()
-            else:
-                destination = self.storage_root / path.lstrip("/")
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(source, destination)
-
-            entry.size = new_size
-            self.modified.add(path)
-            self.status.showMessage(
-                f"Archivo reemplazado: {path} ({self.format_size(new_size)})"
-            )
-
-            QMessageBox.information(
-                self, "Importar",
-                "Archivo importado correctamente.\n\n"
-                "Para obtener una ISO modificada usa ISO → Reconstruir ISO..."
-            )
-
-        except Exception as exc:
-            QMessageBox.critical(self, "Error al importar", str(exc))
+        self._import_file_from_path(source, path)
 
     def rebuild_iso(self):
         if not self.reader:

@@ -23,6 +23,8 @@ If you encounter any errors, please install the following redistributable packag
 
 [Microsoft Visual C++ 2005 SP1 Redistributable Package (x64)](https://www.microsoft.com/en-us/download/details.aspx?id=26347)
 
+The log version will display a log or generate a .log file if the app fails to start.
+
 ## How to convert WAV audio files to AT3
 
 You can drag and drop the audio files onto the index editor window, and the conversion will automatically start—whether it's from WAV to AT3 or AT3 to WAV.
@@ -154,7 +156,7 @@ pip install -r requirements.txt
 
 Then you'll need the CLI tools.
 These are required if you plan to work with audio files; otherwise, you can skip them.
-The links to the CLI tools are located in their corresponding folders: **at3tool**, **vgmstream**, and **AIFF2VAG**.
+The links to the CLI tools are located in their corresponding folders: **at3tool**, **vgmstream**, **ffmpeg**, and **AIFF2VAG**.
 
 Finally, run the `Main.py` script.
 

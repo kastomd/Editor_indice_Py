@@ -15,6 +15,7 @@ Responsabilidades:
 import gc
 import struct
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable, Mapping, Optional
 
 from PyQt5.QtGui import QIcon
@@ -270,10 +271,11 @@ class PackFileBuffer:
             self.psp_iso_explorer.hide()
 
             self.explorer_packfile = mostrar_explorador(
-                address_files,
+                files_list=address_files,
                 ram_source=self
             )
             self.explorer_packfile.setWindowIcon(QIcon(str(self.psp_iso_explorer.main_app.icon)))
+            self.explorer_packfile.setWindowTitle(f"PSP Packfile Explorer - {Path(self.psp_iso_explorer.iso_path).name}")
             self.explorer_packfile.set_packfile_header_size(self.size_header_pack)
 
             self.explorer_packfile.closed.connect(

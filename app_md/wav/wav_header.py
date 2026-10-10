@@ -121,6 +121,14 @@ class AT3HeaderBuilder:
             factor: float,
             block_size: int = 65536
     ):
+        """
+        Cambia la velocidad del audio parecido al proceso de audiacity
+        :param input_path: audio de entrada
+        :param output_path: audio de salida
+        :param factor: define la velocidad y tono del audio
+        :param block_size: block de sampleos
+        :return: guarda el audio en formato .wav
+        """
         if factor <= 0:
             raise ValueError("El factor debe ser mayor que 0")
 

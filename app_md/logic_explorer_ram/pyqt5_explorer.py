@@ -5,6 +5,7 @@ import json
 import re
 import shutil
 import tempfile
+import traceback
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, pyqtSignal, QEvent, QPoint, QTimer
@@ -18,6 +19,7 @@ from PyQt5.QtWidgets import (
     QDialog, QFormLayout, QDialogButtonBox, QCheckBox, QTextEdit, QSpinBox
 )
 
+from app_md.logic_explorer_ram.ui_paths_reordenados import PathOrderDialog
 from app_md.logic_extr.vag_header import VAGHeader
 from app_md.logic_iso.data_convert import DataConvert
 from app_md.wav.wav_header import AT3HeaderBuilder
@@ -740,12 +742,116 @@ class ExplorerWindow(QMainWindow):
     """
     closed = pyqtSignal()
 
+    # ========================================================
+    # DRAG & DROP DE ARCHIVOS FISICOS
+    # ========================================================
+
+    def dragEnterEvent(self, event):
+        """Acepta únicamente arrastres que contengan archivos físicos."""
+        mime_data = event.mimeData()
+
+        if mime_data.hasUrls():
+            file_paths = [
+                url.toLocalFile()
+                for url in mime_data.urls()
+                if url.isLocalFile() and os.path.isfile(url.toLocalFile())
+            ]
+
+            if file_paths:
+                event.acceptProposedAction()
+                return
+
+        event.ignore()
+
+    def dropEvent(self, event):
+        """Obtiene los paths de los archivos físicos arrastrados."""
+        mime_data = event.mimeData()
+
+        file_paths = [
+            url.toLocalFile()
+            for url in mime_data.urls()
+            if url.isLocalFile() and os.path.isfile(url.toLocalFile())
+        ]
+
+        if file_paths:
+            self.on_files_dropped(file_paths)
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def on_files_dropped(self, file_paths):
+        """
+        Punto de entrada para los archivos arrastrados.
+
+        ``file_paths`` es una lista con las rutas físicas de los archivos.
+        """
+        files = self.selected_items()
+
+        if not files or len(files) == 0:
+            QMessageBox.information(
+                self,
+                "Importar archivo",
+                "Selecciona al menos un archivo"
+            )
+            return
+
+        if len(files) != len(file_paths):
+            QMessageBox.information(
+                self,
+                "Importar archivo",
+                f"\nNo se puede continuar:\n{len(files)} archivos seleccionados y {len(file_paths)} archivos arrastrados."
+            )
+            return
+
+        is_folder_item:bool= False
+        for item in files:
+            is_folder_item = item.item_type == 'folder'
+            if is_folder_item:
+                break
+
+        if is_folder_item:
+            QMessageBox.information(
+                self,
+                "Importar archivo",
+                "Solo puedes importar archivos, con arrastrar y soltar en la ui."
+            )
+            return
+
+        # confirmacion
+        mensaje = "Los siguientes archivos serán reemplazados:\n\n"
+        file_ui="--Archivos en UI--\n"
+        file_fis="--Archivos en disco--\n"
+        for ui_file, physical_path in zip(files, file_paths):
+            file_ui += f"{ui_file.name}\n"
+            file_fis += f"{Path(physical_path).name}\n"
+            # mensaje += f"'{ui_file.name}' == '{Path(physical_path).name}'\n"
+
+        mensaje += f"{file_ui}\n{file_fis}\n¿Desea continuar?"
+
+        respuesta = QMessageBox.question(
+            self,
+            "Confirmar reemplazo",
+            mensaje,
+            QMessageBox.Ok | QMessageBox.Cancel,
+            QMessageBox.Cancel
+        )
+
+        if not (respuesta == QMessageBox.Ok):
+            print("Drop cancelado")
+            return
+
+        self.import_file_bytes(item=files, view_dialog=False, files_paths=file_paths)
+
+
     def closeEvent(self, event):
         self.closed.emit()
         super().closeEvent(event)
 
     def __init__(self, files_list=None, ram_source=None):
         super().__init__()
+
+        # Permitir arrastrar archivos físicos hacia la ventana.
+        self.setAcceptDrops(True)
 
         # Objeto padre que contiene los bytes del packfile/RAM.
         # Debe permitir slicing, por ejemplo: parent[offset:end].
@@ -2554,6 +2660,19 @@ class ExplorerWindow(QMainWindow):
 
         return max_num + 1
 
+    def ordenar_paths_con_ui(self, paths, parent=None):
+
+        self.dialog = None
+        self.dialog = PathOrderDialog(
+            paths,
+            parent
+        )
+
+        if self.dialog.exec_() == QDialog.Accepted:
+            return self.dialog.get_paths()
+
+        return None
+
     def insert_new_file(self):
         """
         Inserta un archivo físico NUEVO en ROOT.
@@ -2587,106 +2706,133 @@ class ExplorerWindow(QMainWindow):
         Siempre se inserta en ROOT, independientemente de la carpeta
         actualmente abierta.
         """
-        filename, _ = QFileDialog.getOpenFileName(
+        filenames, _ = QFileDialog.getOpenFileNames(
             self,
             "Insertar archivo nuevo",
             "",
             "Todos los archivos (*)",
         )
 
-        if not filename:
+        if not filenames:
             return
 
-        source = Path(filename)
+        ## ordenar orden numerico
+        def ordenar_paths_numericamente(paths):
+            def obtener_numero(path):
+                nombre = Path(path).stem
+                match = re.search(r'\d+', nombre)
 
-        try:
-            if not source.is_file():
-                QMessageBox.warning(
+                return int(match.group()) if match else float('inf')
+
+            return sorted(paths, key=obtener_numero)
+
+        # si es mas de un archivo reordena y muestra ui
+        if len(filenames) > 1:
+            paths_ordenados = ordenar_paths_numericamente(filenames)
+            paths_ordenados = self.ordenar_paths_con_ui(
+                paths=paths_ordenados,
+                parent=self
+            )
+        else:
+            paths_ordenados = filenames
+
+        if paths_ordenados is None:
+            return
+
+        for filename in paths_ordenados:
+
+            source = Path(filename)
+
+            try:
+                if not source.is_file():
+                    QMessageBox.warning(
+                        self,
+                        "Insertar archivo",
+                        f"El archivo no existe o no es válido:\n{source}",
+                    )
+                    return
+
+                data = source.read_bytes()
+                size = len(data)
+            except OSError as exc:
+                QMessageBox.critical(
                     self,
-                    "Insertar archivo",
-                    f"El archivo no existe o no es válido:\n{source}",
+                    "Error al insertar archivo",
+                    f"No se pudo leer el archivo:\n\n{source}\n\n{exc}",
                 )
                 return
 
-            data = source.read_bytes()
-            size = len(data)
-        except OSError as exc:
-            QMessageBox.critical(
-                self,
-                "Error al insertar archivo",
-                f"No se pudo leer el archivo:\n\n{source}\n\n{exc}",
-            )
-            return
+            visible_name = source.name
 
-        visible_name = source.name
+            # Se inserta en ROOT, por lo que comprobamos solamente los nombres
+            # visibles que ya están directamente dentro de ROOT.
+            if self.name_exists(self.root, visible_name):
+                QMessageBox.warning(
+                    self,
+                    "Archivo ya existente",
+                    f"Ya existe un elemento llamado:\n\n{visible_name}\n\nen ROOT.",
+                )
+                return
 
-        # Se inserta en ROOT, por lo que comprobamos solamente los nombres
-        # visibles que ya están directamente dentro de ROOT.
-        if self.name_exists(self.root, visible_name):
-            QMessageBox.warning(
-                self,
-                "Archivo ya existente",
-                f"Ya existe un elemento llamado:\n\n{visible_name}\n\nen ROOT.",
-            )
-            return
-
-        num_file = self._get_next_ui_file_num()
-        internal_name = make_ram_file_name(num_file)
-
-        # Seguridad adicional: nunca sobrescribir una entrada del diccionario.
-        while internal_name.casefold() in {
-            str(key).casefold() for key in self.new_files.keys()
-        }:
-            num_file += 1
+            num_file = self._get_next_ui_file_num()
             internal_name = make_ram_file_name(num_file)
 
-        item = ExplorerItem(
-            name=visible_name,
-            item_type="file",
-            path=source,
-            parent=self.root,
-            internal_name=internal_name,
-            offset="(por definir)",
-            length=size,
-            num_file=num_file,
-        )
+            # Seguridad adicional: nunca sobrescribir una entrada del diccionario.
+            while internal_name.casefold() in {
+                str(key).casefold() for key in self.new_files.keys()
+            }:
+                num_file += 1
+                internal_name = make_ram_file_name(num_file)
 
-        self.root.add_child(item)
+            print(f"Name_interno: {internal_name} -- {visible_name}")
 
-        virtual_path = self.item_path(item)
+            item = ExplorerItem(
+                name=visible_name,
+                item_type="file",
+                path=source,
+                parent=self.root,
+                internal_name=internal_name,
+                offset="(por definir)",
+                length=size,
+                num_file=num_file,
+            )
 
-        self.new_files[internal_name] = {
-            "bytes": data,
-            "info": {
-                "visible_name": visible_name,
-                "name": visible_name,
-                "internal_name": internal_name,
-                "offset": "(por definir)",
-                "length": size,
-                "size": size,
-                "num_file": num_file,
-                "physical_path": str(source),
-                "virtual_path": virtual_path,
-                "path": virtual_path,
-                "parent_path": self.item_path(self.root),
-                "item": item,
-                "is_new": True,
-            },
-        }
+            self.root.add_child(item)
 
-        self._rebuild_item_index()
+            virtual_path = self.item_path(item)
 
-        if self.current_folder is self.root:
-            self._insert_item_into_current_view(item)
-        else:
-            # La estructura cambió, pero la carpeta actual no.
-            # Solo necesitamos actualizar el estado de cantidad.
-            self.update_status()
+            self.new_files[internal_name] = {
+                "bytes": data,
+                "info": {
+                    "visible_name": visible_name,
+                    "name": visible_name,
+                    "internal_name": internal_name,
+                    "offset": "(por definir)",
+                    "length": size,
+                    "size": size,
+                    "num_file": num_file,
+                    "physical_path": str(source),
+                    "virtual_path": virtual_path,
+                    "path": virtual_path,
+                    "parent_path": self.item_path(self.root),
+                    "item": item,
+                    "is_new": True,
+                },
+            }
 
-        self.status_label.setText(
-            f"Archivo nuevo insertado | {internal_name} | "
-            f"{self.format_size(size)}"
-        )
+            self._rebuild_item_index()
+
+            if self.current_folder is self.root:
+                self._insert_item_into_current_view(item)
+            else:
+                # La estructura cambió, pero la carpeta actual no.
+                # Solo necesitamos actualizar el estado de cantidad.
+                self.update_status()
+
+            self.status_label.setText(
+                f"Archivo nuevo insertado | {internal_name} | "
+                f"{self.format_size(size)}"
+            )
 
     def get_new_files(self):
         """
@@ -3116,7 +3262,7 @@ class ExplorerWindow(QMainWindow):
                     "Selecciona al menos un archivo.",
                 )
             else:
-                self.import_file_bytes(files)
+                self.import_file_bytes(item=files)
 
         elif (
             item is not None
@@ -3696,7 +3842,7 @@ class ExplorerWindow(QMainWindow):
 
         return filename.read_bytes(), False
 
-    def import_file_bytes(self, item=None):
+    def import_file_bytes(self, item=None, view_dialog:bool=True, files_paths=[]):
         """
         Importa bytes desde uno o varios archivos físicos.
 
@@ -3752,10 +3898,21 @@ class ExplorerWindow(QMainWindow):
         # UN SOLO ARCHIVO
         # ============================================================
         if len(selected) == 1:
-            filename, _ = QFileDialog.getOpenFileName(
-                self,
-                "Importar archivo",
-            )
+            if view_dialog:
+                filename, _ = QFileDialog.getOpenFileName(
+                    self,
+                    "Importar archivo",
+                )
+            else:
+                if len(files_paths) > 1:
+                    QMessageBox.information(
+                        self,
+                        "Importar archivo",
+                        "Solo existe un elemento seleccionado en la UI"
+                    )
+                    return
+                filename = files_paths[0]
+
             if not filename:
                 return
 
@@ -3794,12 +3951,15 @@ class ExplorerWindow(QMainWindow):
         # ============================================================
         # VARIOS ARCHIVOS
         # ============================================================
-        filenames, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Importar archivos",
-            "",
-            "Todos los archivos (*.*)",
-        )
+        if view_dialog:
+            filenames, _ = QFileDialog.getOpenFileNames(
+                self,
+                "Importar archivos",
+                "",
+                "Todos los archivos (*.*)",
+            )
+        else:
+            filenames = files_paths
 
         if not filenames:
             return
@@ -4850,6 +5010,48 @@ class ExplorerWindow(QMainWindow):
 
         return result
 
+    def get_last_internal_name(self):
+        """
+        Devuelve el último nombre interno válido actualmente existente en la UI.
+
+        Ejemplo:
+            1-1.unk
+            5-5.unk
+            20-14.unk
+
+        Devuelve:
+            "20-14.unk"
+
+        Si no existen archivos válidos:
+            None
+        """
+        max_num = -1
+        last_internal_name = None
+
+        for item in self.get_ui_files():
+            if item is None or item.is_folder():
+                continue
+
+            internal_name = str(item.internal_name).strip()
+
+            # Formato esperado:
+            # decimal-hex.unk
+            match = re.match(
+                r"^(\d+)-([0-9A-Fa-f]+)\.unk$",
+                internal_name,
+            )
+
+            if match is None:
+                continue
+
+            num = int(match.group(1))
+
+            if num > max_num:
+                max_num = num
+                last_internal_name = internal_name
+
+        return last_internal_name
+
     def guardar(self):
         """
         Punto de entrada del botón "💾 Guardar".
@@ -4881,202 +5083,209 @@ class ExplorerWindow(QMainWindow):
         ruta virtual, ruta física, num_file, ExplorerItem, etc.
         """
 
-        # ----------------------------------------------------
-        # Variables disponibles directamente para tu código.
-        # ----------------------------------------------------
-        ram_source = self.ram_source
-        imported_files = self.imported_files
-        new_files = self.new_files
-        ui_files = self.get_ui_files()
-        paddings = self.paddings
+        try:
+            # ----------------------------------------------------
+            # Variables disponibles directamente para tu código.
+            # ----------------------------------------------------
+            ram_source = self.ram_source
+            imported_files = self.imported_files
+            new_files = self.new_files
+            ui_files = self.get_ui_files()
+            paddings = self.paddings
 
-        # Actualizar la información de los archivos nuevos antes de que tu
-        # lógica de guardado la utilice. Esto mantiene al día, por ejemplo,
-        # la ruta virtual si el archivo fue movido después de insertarlo.
-        for new_item in ui_files:
-            if new_item.internal_name in new_files:
-                self.get_file_info_by_internal_name(
-                    new_item.internal_name,
-                    include_bytes=False,
+            # Actualizar la información de los archivos nuevos antes de que tu
+            # lógica de guardado la utilice. Esto mantiene al día, por ejemplo,
+            # la ruta virtual si el archivo fue movido después de insertarlo.
+            for new_item in ui_files:
+                if new_item.internal_name in new_files:
+                    self.get_file_info_by_internal_name(
+                        new_item.internal_name,
+                        include_bytes=False,
+                    )
+
+            # file_count = self.get_ui_file_count()
+            file_count = int(self.get_last_internal_name().split("-", 1)[0])
+
+            # ``new_files`` contiene directamente los bytes y la información
+            # de cada archivo insertado.
+            #
+            # Ejemplo:
+            #     for internal_name, entry in new_files.items():
+            #         data = entry["bytes"]
+            #         info = entry["info"]
+            #
+            #     info["visible_name"]
+            #     info["internal_name"]
+            #     info["offset"]
+            #     info["length"]
+            #     info["num_file"]
+            #     info["physical_path"]
+            #     info["virtual_path"]
+            #
+            # Ejemplo de búsqueda por nombre interno:
+            #
+            # info = self.get_file_info_by_internal_name("1-1.unk")
+            #
+            # Ejemplo de acceso a un dato concreto:
+            #
+            # if info is not None:
+            #     visible_name = info["visible_name"]
+            #     internal_name = info["internal_name"]
+            #     offset = info["offset"]
+            #     size = info["size"]
+            #     route = info["path"]
+            #
+            # ----------------------------------------------------
+            # COLOCA AQUÍ TU CÓDIGO DE GUARDADO.
+            # ----------------------------------------------------
+            QMessageBox.information(self, "Reconstruir-PackFile", "Asegurate de no tener la ISO orginal abierta en otro software,\nmientras se termina esta tarea")
+
+            iso_explorer = ram_source.psp_iso_explorer
+
+            source_new = bytearray()
+            address_files = []
+            nt_fd_files = []
+            offset_actual = 0
+            # with open(iso_explorer.iso_path, "rb") as f:
+            for i in range(1, file_count+1):
+                name = f"{i}-{i:X}.unk"
+
+                # Buscar en new_files
+                data = new_files.get(name)
+
+                if data is not None:
+                    data_file = data["bytes"]
+
+                else:
+                    # Buscar en imported_files
+                    data_file = imported_files.get(name)
+
+                    if data_file is None:
+                        # Buscar en los archivos originales
+                        info = self.get_file_info_by_internal_name(name)
+
+                        if info is not None:
+                            offset:int = info["offset"]
+                            offset -= ram_source.packfile_offset
+                            size:int = info["size"]
+                            data_file = ram_source[offset:offset + size]
+                            #leer el iso fisico, evita recalcular los offset, en caso de reconstruir iso
+                            # f.seek(offset)
+                            # data_file = f.read(size)
+                        else:
+                            nt_fd_files.append(name)
+                            continue
+
+                # Agregar archivo
+                size = len(data_file)
+                source_new += bytearray(data_file)
+
+                # Padding hasta múltiplo de 0x800
+                padding = (-size) % 0x800
+                source_new += b"\x00" * padding
+
+                # agregar padding extra
+                add_padding:int = paddings.get(name, 0)
+                if add_padding is not None and add_padding > 0:
+                    add_padding*=0x800
+                    source_new += b"\x00" * add_padding
+
+                # Registrar información
+                address_files.append((offset_actual, size, name))
+                offset_actual += size + padding + add_padding
+
+            # header
+            data_indices = bytearray()
+            key_ttt = struct.unpack("<I", ram_source[0:4])[0]
+            num_files_validos = len(address_files)
+            data_indices.extend(struct.pack("<I", key_ttt))
+            data_indices.extend(struct.pack("<I", num_files_validos))
+            data_indices.extend(b"\x00" * 8)
+
+            #indices
+            size_indices = num_files_validos*0x10
+            size_indices+=0x10
+            remainder = size_indices % 0x800
+            if remainder != 0:
+                padding = 0x800 - remainder
+                size_indices += padding
+
+            # minimo 38000 bytes para 0x3711 archivos
+            if size_indices < 0x38000: size_indices = 0x38000
+            self.set_packfile_header_size(size_indices)
+            iso_explorer.set_packfile_header_size(size_indices)
+
+            d_c = DataConvert(None)
+            for i in range(num_files_validos):
+                offset = d_c.getOffsetConvert(
+                    encript_ttt=True,
+                    val=(address_files[i][0] + ram_source.packfile_offset + size_indices)//0x800,
+                    key=key_ttt,
+                    base_offset=(ram_source.packfile_offset + size_indices)//0x800
                 )
 
-        file_count = self.get_ui_file_count()
+                long = d_c.getSizeConvert(
+                    desincript_ttt=True,
+                    key=f"{i}",
+                    bitR=address_files[i][1]
+                )
 
-        # ``new_files`` contiene directamente los bytes y la información
-        # de cada archivo insertado.
-        #
-        # Ejemplo:
-        #     for internal_name, entry in new_files.items():
-        #         data = entry["bytes"]
-        #         info = entry["info"]
-        #
-        #     info["visible_name"]
-        #     info["internal_name"]
-        #     info["offset"]
-        #     info["length"]
-        #     info["num_file"]
-        #     info["physical_path"]
-        #     info["virtual_path"]
-        #
-        # Ejemplo de búsqueda por nombre interno:
-        #
-        # info = self.get_file_info_by_internal_name("1-1.unk")
-        #
-        # Ejemplo de acceso a un dato concreto:
-        #
-        # if info is not None:
-        #     visible_name = info["visible_name"]
-        #     internal_name = info["internal_name"]
-        #     offset = info["offset"]
-        #     size = info["size"]
-        #     route = info["path"]
-        #
-        # ----------------------------------------------------
-        # COLOCA AQUÍ TU CÓDIGO DE GUARDADO.
-        # ----------------------------------------------------
-        QMessageBox.information(self, "Reconstruir-PackFile", "Asegurate de no tener la ISO orginal abierta en otro software,\nmientras se termina esta tarea")
+                data_indices.extend(struct.pack("<I", offset))
+                data_indices.extend(struct.pack("<I", long))
+                data_indices.extend(struct.pack("<I", key_ttt))
+                data_indices.extend(b"\x00" * 4)
 
-        iso_explorer = ram_source.psp_iso_explorer
+            # padding para header de indices
+            padding = size_indices-len(data_indices)
+            if padding < 0:
+                raise ValueError(f"Valor negativo: size_indices - data_indices\n{size_indices:X} - {len(data_indices):X} = {padding}")
+            if padding > 0:
+                data_indices.extend(b"\x00" * padding)
+            source_new = data_indices + source_new
 
-        source_new = bytearray()
-        address_files = []
-        nt_fd_files = []
-        offset_actual = 0
-        # with open(iso_explorer.iso_path, "rb") as f:
-        for i in range(1, file_count+1):
-            name = f"{i}-{i:X}.unk"
+            # ------------------------------------------------------------
+            # Crear un NUEVO buffer para el resultado reconstruido.
+            #
+            # ram_source es el buffer ORIGINAL y NO se modifica.
+            # El nuevo buffer se entrega al IsoExplorer únicamente para que
+            # sea usado como fuente del PACKFILE que se reconstruirá en la ISO.
+            # ------------------------------------------------------------
+            if iso_explorer is None:
+                raise RuntimeError(
+                    "No existe el IsoExplorer asociado."
+                )
 
-            # Buscar en new_files
-            data = new_files.get(name)
-
-            if data is not None:
-                data_file = data["bytes"]
-
-            else:
-                # Buscar en imported_files
-                data_file = imported_files.get(name)
-
-                if data_file is None:
-                    # Buscar en los archivos originales
-                    info = self.get_file_info_by_internal_name(name)
-
-                    if info is not None:
-                        offset:int = info["offset"]
-                        offset -= ram_source.packfile_offset
-                        size:int = info["size"]
-                        data_file = ram_source[offset:offset + size]
-                        #leer el iso fisico, evita recalcular los offset, en caso de reconstruir iso
-                        # f.seek(offset)
-                        # data_file = f.read(size)
-                    else:
-                        nt_fd_files.append(name)
-                        continue
-
-            # Agregar archivo
-            size = len(data_file)
-            source_new += bytearray(data_file)
-
-            # Padding hasta múltiplo de 0x800
-            padding = (-size) % 0x800
-            source_new += b"\x00" * padding
-
-            # agregar padding extra
-            add_padding:int = paddings.get(name, 0)
-            if add_padding is not None and add_padding > 0:
-                add_padding*=0x800
-                source_new += b"\x00" * add_padding
-
-            # Registrar información
-            address_files.append((offset_actual, size, name))
-            offset_actual += size + padding + add_padding
-
-        # header
-        data_indices = bytearray()
-        key_ttt = struct.unpack("<I", ram_source[0:4])[0]
-        num_files_validos = len(address_files)
-        data_indices.extend(struct.pack("<I", key_ttt))
-        data_indices.extend(struct.pack("<I", num_files_validos))
-        data_indices.extend(b"\x00" * 8)
-
-        #indices
-        size_indices = num_files_validos*0x10
-        size_indices+=0x10
-        remainder = size_indices % 0x800
-        if remainder != 0:
-            padding = 0x800 - remainder
-            size_indices += padding
-
-        # minimo 38000 bytes para 0x3711 archivos
-        if size_indices < 0x38000: size_indices = 0x38000
-        self.set_packfile_header_size(size_indices)
-        iso_explorer.set_packfile_header_size(size_indices)
-
-        d_c = DataConvert(None)
-        for i in range(num_files_validos):
-            offset = d_c.getOffsetConvert(
-                encript_ttt=True,
-                val=(address_files[i][0] + ram_source.packfile_offset + size_indices)//0x800,
-                key=key_ttt,
-                base_offset=(ram_source.packfile_offset + size_indices)//0x800
+            new_packfile_buffer = PackFileBuffer(
+                bytearray(source_new),
+                packfile_offset=ram_source.packfile_offset,
+                iso_size=ram_source.iso_size,
+                path=ram_source.path,
+                contenedor=iso_explorer,
             )
 
-            long = d_c.getSizeConvert(
-                desincript_ttt=True,
-                key=f"{i}",
-                bitR=address_files[i][1]
+            # NO hacer: ram_source.data[:] = source_new
+            # ram_source continúa conteniendo el PACKFILE original.
+            #
+            # El nuevo buffer se conserva en IsoExplorer separado del
+            # buffer original (self.packfile_buffer).
+            iso_explorer.new_packfile_buffer = new_packfile_buffer
+            iso_explorer.apply_packfile_buffer(new_packfile_buffer)
+
+            self.status_label.setText(
+                f"Guardar | PACKFILE.BIN actualizado | "
+                f"{len(source_new):,} bytes"
             )
 
-            data_indices.extend(struct.pack("<I", offset))
-            data_indices.extend(struct.pack("<I", long))
-            data_indices.extend(struct.pack("<I", key_ttt))
-            data_indices.extend(b"\x00" * 4)
+            if nt_fd_files:
+                self.mostrar_lista(nt_fd_files)
 
-        # padding para header de indices
-        padding = size_indices-len(data_indices)
-        if padding < 0:
-            raise ValueError(f"Valor negativo: size_indices - data_indices\n{size_indices:X} - {len(data_indices):X} = {padding}")
-        if padding > 0:
-            data_indices.extend(b"\x00" * padding)
-        source_new = data_indices + source_new
+            # build iso
+            iso_explorer.rebuild_iso()
+        except Exception as e:
+            trace = traceback.format_exc()
 
-        # ------------------------------------------------------------
-        # Crear un NUEVO buffer para el resultado reconstruido.
-        #
-        # ram_source es el buffer ORIGINAL y NO se modifica.
-        # El nuevo buffer se entrega al IsoExplorer únicamente para que
-        # sea usado como fuente del PACKFILE que se reconstruirá en la ISO.
-        # ------------------------------------------------------------
-        if iso_explorer is None:
-            raise RuntimeError(
-                "No existe el IsoExplorer asociado."
-            )
-
-        new_packfile_buffer = PackFileBuffer(
-            bytearray(source_new),
-            packfile_offset=ram_source.packfile_offset,
-            iso_size=ram_source.iso_size,
-            path=ram_source.path,
-            contenedor=iso_explorer,
-        )
-
-        # NO hacer: ram_source.data[:] = source_new
-        # ram_source continúa conteniendo el PACKFILE original.
-        #
-        # El nuevo buffer se conserva en IsoExplorer separado del
-        # buffer original (self.packfile_buffer).
-        iso_explorer.new_packfile_buffer = new_packfile_buffer
-        iso_explorer.apply_packfile_buffer(new_packfile_buffer)
-
-        self.status_label.setText(
-            f"Guardar | PACKFILE.BIN actualizado | "
-            f"{len(source_new):,} bytes"
-        )
-
-        if nt_fd_files:
-            self.mostrar_lista(nt_fd_files)
-
-        # build iso
-        iso_explorer.rebuild_iso()
+            QMessageBox.critical(self, "Error Reconstruir-PackFile",
+                                    f"ocurrio un error:\n{e}\nTraza:\n{trace}")
 
     def mostrar_lista(self, lista):
         dialog = QDialog(self)
@@ -5125,15 +5334,45 @@ class ExplorerWindow(QMainWindow):
         if item.item_type == "file":
             data["path"] = str(item.path) if item.path else None
 
+            # Estos valores SÍ representan la identidad/estructura.
             data["internal_name"] = item.internal_name
-            data["offset"] = item.offset
-            data["length"] = item.length
             data["num_file"] = item.num_file
 
+            # NO guardar:
+            # data["offset"] = item.offset
+            # data["length"] = item.length
+
         if item.is_folder():
-            data["children"] = [self.serialize_item(c) for c in item.children]
+            data["children"] = [
+                self.serialize_item(c)
+                for c in item.children
+            ]
 
         return data
+
+    def _get_loaded_file_metadata(self):
+        """
+        Obtiene offset y length de los archivos que están actualmente
+        cargados en la UI.
+
+        La clave es internal_name porque no cambia cuando el archivo
+        es renombrado o movido de carpeta.
+        """
+        metadata = {}
+
+        for item in self.all_items(self.root):
+            if item.is_folder():
+                continue
+
+            if not item.internal_name:
+                continue
+
+            metadata[item.internal_name] = {
+                "offset": item.offset,
+                "length": item.length,
+            }
+
+        return metadata
 
     def export_structure(self):
         filename, _ = QFileDialog.getSaveFileName(
@@ -5142,21 +5381,40 @@ class ExplorerWindow(QMainWindow):
             "explorer_structure.json",
             "JSON (*.json)"
         )
+
         if not filename:
             return
 
         data = {
             "version": 2,
             "root": self.serialize_item(self.root),
-            "favorites": [self.item_path(x) for x in self.favorites],
+            "favorites": [
+                self.item_path(x)
+                for x in self.favorites
+            ],
         }
 
         try:
             with open(filename, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-            QMessageBox.information(self, "Exportado", "Estructura exportada correctamente.")
+                json.dump(
+                    data,
+                    f,
+                    indent=4,
+                    ensure_ascii=False
+                )
+
+            QMessageBox.information(
+                self,
+                "Exportado",
+                "Estructura exportada correctamente."
+            )
+
         except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+            QMessageBox.critical(
+                self,
+                "Error",
+                str(e)
+            )
 
     def import_structure(self):
         filename, _ = QFileDialog.getOpenFileName(
@@ -5165,55 +5423,161 @@ class ExplorerWindow(QMainWindow):
             "",
             "JSON (*.json)"
         )
+
         if not filename:
             return
 
         try:
+            # ------------------------------------------------
+            # 1. Guardar los metadatos de los archivos
+            #    actualmente cargados.
+            # ------------------------------------------------
+            loaded_metadata = self._get_loaded_file_metadata()
+
+            # ------------------------------------------------
+            # 2. Leer JSON.
+            # ------------------------------------------------
             with open(filename, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            self.root = self.deserialize_item(data["root"], None)
+            # ------------------------------------------------
+            # 3. Reconstruir la estructura.
+            #
+            #    deserialize_item NO toma offset/length
+            #    desde el JSON.
+            #
+            #    Se los pasamos desde loaded_metadata.
+            # ------------------------------------------------
+            self.root = self.deserialize_item(
+                data["root"],
+                None,
+                loaded_metadata
+            )
+
             self.new_files.clear()
+
             self._rebuild_item_index()
+
             self.packfile_list_path = None
+
             self.favorites = [self.root]
 
             for path in data.get("favorites", []):
                 item = self.find_by_virtual_path(path)
+
                 if item:
                     self.favorites.append(item)
 
             self.history = [self.root]
             self.history_index = 0
+
             self.current_folder = self.root
+
             self.refresh_current_folder()
             self.update_favorites()
-            self.path_label.setText(self.item_path(self.root))
+
+            self.path_label.setText(
+                self.item_path(self.root)
+            )
+
             self.update_navigation_buttons()
 
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"No se pudo importar:\n{e}")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"No se pudo importar:\n{e}"
+            )
 
-    def deserialize_item(self, data, parent):
-        item = ExplorerItem(
-            data["name"],
-            data["type"],
-            data.get("path"),
+    def deserialize_item(
+            self,
+            data,
             parent,
-            internal_name=data.get(
+            loaded_metadata=None
+    ):
+        """
+        Reconstruye la estructura usando únicamente archivos que
+        ya existen actualmente en la UI.
+
+        Las carpetas del JSON sí se pueden crear.
+
+        Si un archivo del JSON no existe actualmente en la UI,
+        simplemente se ignora.
+        """
+
+        if loaded_metadata is None:
+            loaded_metadata = {}
+
+        # ------------------------------------------------
+        # CARPETA
+        # ------------------------------------------------
+        if data["type"] == "folder":
+
+            item = ExplorerItem(
+                data["name"],
+                "folder",
+                data.get("path"),
+                parent,
+                internal_name=data.get(
+                    "internal_name",
+                    data["name"]
+                ),
+            )
+
+            for child_data in data.get("children", []):
+                child = self.deserialize_item(
+                    child_data,
+                    item,
+                    loaded_metadata
+                )
+
+                # Si el archivo no existe actualmente, child será None.
+                if child is not None:
+                    item.add_child(child)
+
+            return item
+
+        # ------------------------------------------------
+        # ARCHIVO
+        # ------------------------------------------------
+        if data["type"] == "file":
+
+            internal_name = data.get(
                 "internal_name",
                 data["name"]
-            ),
-            offset=data.get("offset"),
-            length=data.get("length"),
-            num_file=data.get("num_file"),
-        )
+            )
 
-        for child_data in data.get("children", []):
-            child = self.deserialize_item(child_data, item)
-            item.add_child(child)
+            # ------------------------------------------------
+            # Si no existe actualmente en la UI:
+            # NO CREARLO.
+            # ------------------------------------------------
+            metadata = loaded_metadata.get(internal_name)
 
-        return item
+            if metadata is None:
+                return None
+
+            # ------------------------------------------------
+            # Recuperar los valores reales del archivo
+            # actualmente cargado.
+            # ------------------------------------------------
+            offset = metadata.get("offset")
+            length = metadata.get("length")
+
+            item = ExplorerItem(
+                data["name"],
+                "file",
+                data.get("path"),
+                parent,
+                internal_name=internal_name,
+                offset=offset,
+                length=length,
+                num_file=data.get("num_file"),
+            )
+
+            return item
+
+        # Tipo desconocido
+        return None
 
     # ========================================================
     # UTILIDADES

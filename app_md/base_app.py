@@ -34,7 +34,7 @@ from app_md.logic_explorer_ram.psp_iso_explorer import IsoExplorer
 class BaseApp:
     def __init__(self):
         self.path_iso = None
-        self.version = "1.20260423-test"
+        self.version = "1.20261009-test"
 
         # icono de la app
         self.icon = Path(__file__).resolve().parent / "images" / "icon.ico"

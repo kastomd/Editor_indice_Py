@@ -68,8 +68,9 @@ class VAGHeader:
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
         return subprocess.run(
             command,
-            capture_output=True,
             text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             creationflags=creation_flags
         )
 
@@ -86,7 +87,19 @@ class VAGHeader:
         result = self._run_subprocess(command)
 
         if result.returncode != 0:
-            raise ValueError(f"Error converting \"{vag_path.name}\":\n{result.stderr}")
+            if is_vag:
+                # si es vag muestra el error
+                error = result.stdout.strip()
+                raise ValueError(f"Error converting \"{vag_path.name}\":\n{error}")
+
+            print(f"Segundo instento {vag_path.name}")
+            exe_path = self._get_resources_path(Path("tools/ffmpeg/bin/ffmpeg.exe"))
+            command = [str(exe_path), "-i", str(vag_path), "-c:a", "pcm_s16le", "-ar", "44100", "-ac", "2", str(wav_path)]
+
+            result = self._run_subprocess(command)
+            if result.returncode != 0:
+                error = result.stdout.strip()
+                raise ValueError(f"Error converting _2:\"{vag_path.name}\":\n\n{error}")
 
         # cambia la velocidad del audio .wav a 0.5 si lo requiere
         if force_speed or not is_vag and "_m_" in vag_path.name.lower() and self.parent and self.parent.ischeckbox_audio_speed:

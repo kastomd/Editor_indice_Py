@@ -1271,12 +1271,3 @@ class PSPTextureExtractor(QWidget):
                 "Error al extraer",
                 f"No se pudo extraer la textura:\n\n{e}"
             )
-
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    window = PSPTextureExtractor()
-    window.show()
-
-    sys.exit(app.exec_())

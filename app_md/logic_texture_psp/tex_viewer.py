@@ -684,7 +684,7 @@ class TexViewer(QDialog):
             return
 
         if Path(path).suffix == ".bin":
-            
+
             return
 
         rutas.recordar("tex", path)
@@ -952,21 +952,3 @@ class TexViewer(QDialog):
                     t["img"].save(os.path.join(folder, f"{base}_tex{t['index']:02d}.png"))
                 except Exception:
                     pass
-
-# import sys
-#
-# from PyQt5.QtWidgets import QApplication
-#
-# from tex_viewer import TexViewer
-#
-# def main():
-#     app = QApplication(sys.argv)
-#
-#     window = TexViewer()
-#     window.show()
-#
-#     return app.exec_()
-#
-#
-# if __name__ == "__main__":
-#     sys.exit(main())
